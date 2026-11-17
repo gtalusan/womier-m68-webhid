@@ -491,21 +491,15 @@ function drawRadar(t) {
   }
 }
 function drawReactive() {
-  // device behavior (user-verified): whole board rests at bg; a keypress
-  // smears fg around the pressed key
+  // device-verified: the board rests at bg; each keypress lights exactly
+  // that one key in fg (latest press wins), no neighbors
   clearAll();
   for (let r = 1; r <= 5; r++) for (let c = 0; c <= 16; c++) setKey(r, c, S.fc ? "#000000" : S.bg, true);
   const now = performance.now();
-  for (const p of livePresses(900)) {
-    const age = (now - p.t) / 900; // 0..1
-    const rad = 1 + age * 3.5;
-    for (let rr = 1; rr <= 5; rr++) for (let cc = 0; cc <= 16; cc++) {
-      const d = Math.hypot(rr - p.r, cc - p.c);
-      if (d <= rad) {
-        const k = 1 - age * 0.8 - d * 0.06;
-        if (k > 0.15) setKey(rr, cc, S.fc ? hue((now / 8) % 360) : lerpBgFg(Math.max(0.3, k)), true);
-      }
-    }
+  const p = presses[presses.length - 1];
+  if (p && now - p.t < 700) {
+    const k = 1 - (now - p.t) / 700; // fade out
+    setKey(p.r, p.c, S.fc ? hue((now / 8) % 360) : lerpBgFg(0.5 + 0.5 * k), true);
   }
 }
 function drawFireworks() {
