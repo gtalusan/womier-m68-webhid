@@ -7,8 +7,10 @@ software, and built two working configurators: a **browser web app**
 
 ## The web app — `web/`
 
-**M68 Light Studio** is a full keyboard configurator that runs in the
-browser and drives the real board over WebHID:
+**M68 Light Studio** — live at
+<https://gtalusan.github.io/womier-m68-webhid/> — is a full keyboard
+configurator that runs in the browser and drives the real board over
+WebHID:
 
 - **All 15 light effects** with the vendor app's exact parameter set —
   brightness/speed (5 steps), foreground/background colors, full-color,
