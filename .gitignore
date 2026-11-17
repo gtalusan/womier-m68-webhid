@@ -1,0 +1,22 @@
+# vendor binaries + unpacked app (not ours to redistribute, and huge)
+extracted/
+M68_HE_Software_V2.exe
+
+# Ghidra project + decompiled outputs (RE artifacts of the vendor binary)
+ghidra-work/
+ghidra-out/
+
+# local RE scratch dumps inside web/
+web/assets/raw/
+web/assets/samples/
+web/assets/resource-names.txt
+
+# node
+node_modules/
+
+# os
+.DS_Store
+
+# local-only scripts/secrets
+tools/vm_key
+tools/vm_key.pub

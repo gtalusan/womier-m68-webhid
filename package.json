@@ -1,0 +1,12 @@
+{
+  "name": "m68-tools",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "deploy:vm": "tools/vm-deploy.sh",
+    "vm": "tools/vm-run.sh"
+  }
+}

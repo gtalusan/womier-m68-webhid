@@ -1,0 +1,11 @@
+{
+  "name": "m68ctl",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "m68ctl": "src/cli.js"
+  },
+  "dependencies": {
+    "@m68/protocol": "0.1.0"
+  }
+}

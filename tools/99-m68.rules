@@ -1,0 +1,4 @@
+# udev rule for the Womier M68 HE config interface (unprivileged access)
+# Install: sudo cp 99-m68.rules /etc/udev/rules.d/ && sudo udevadm control --reload
+# The vendor interface is HID class; grant access to its hidraw node:
+KERNEL=="hidraw*", ATTRS{idVendor}=="0416", ATTRS{idProduct}=="7372", MODE="0666"
