@@ -1,5 +1,31 @@
 # 11 — Key bindings / remapping: verified spec (RE'd from the binaries)
 
+## STATUS (2026-11-18) — where the next session picks up
+
+RE phase COMPLETE (five parallel Ghidra agents + one resource-parser
+agent). Everything below the "Implementation path" heading is
+binary-verified. Two threads are ready to start:
+
+1. **Key-bindings capture (one step, user-assisted).** Have the user,
+   in the Win11 VM, click the app's custom-keys **Download** button
+   while capturing WinDbg (usb7.log, same method as usb3–usb6). That
+   produces the first-ever real 0x18 upload frames → diff against the
+   framing below → then implement the web Remap tab with confidence.
+   Without the capture, the framing below is binary-verified but
+   never wire-validated for key data (two earlier replays with a
+   wrong `[2]` assumption had no effect).
+2. **Mode-icon UI swap (pure frontend, no device).** All 338 named
+   resources are extracted to `web/assets/icons/` (map in
+   `web/assets/resource-map.json`). Every mode has Def/Sel PNG pairs
+   under `icons/images/deviceLed/keyboard/` (note: Snake is spelled
+   `SnackDef.png` in the vendor's own resources). Swap the page's
+   text `.mode` buttons for the app's QToolButton-style icon buttons
+   (Def = unchecked, Sel = checked). Also available: checkboxes
+   (`publicIco/checkBoxDef/Sel.png`), the full-color toggle, arrows.
+
+Goal binding for the user: **PgUp (0x4B/74) → Print Screen
+(0x46/70)** = the XML item below + the 0x18 upload.
+
 Five parallel Ghidra passes (2026-11-17) decoded the binding system.
 All claims below are verified in M68.exe / witmodSdk.dll disassembly
 unless marked inferred.
