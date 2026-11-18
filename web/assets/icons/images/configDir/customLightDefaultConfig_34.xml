@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<customLight>
+	<customLed index="0" name="Custom 0" isUsing="Using" usingFlagIndex="0">
+		<item keyCode="95" codeName="Num 7" indexX="2" indexY="3" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="96" codeName="Num 8" indexX="2" indexY="4" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="97" codeName="Num 9" indexX="2" indexY="5" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="92" codeName="Num 4" indexX="3" indexY="3" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="93" codeName="Num 5" indexX="3" indexY="4" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="94" codeName="Num 6" indexX="3" indexY="5" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="89" codeName="Num 1" indexX="4" indexY="3" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="90" codeName="Num 2" indexX="4" indexY="4" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="91" codeName="Num 3" indexX="4" indexY="5" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="98" codeName="Num 0" indexX="5" indexY="3" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+		<item keyCode="99" codeName="Num .Del" indexX="5" indexY="5" colorR="0" colorG="0" colorB="255" transparentNum="128" />
+	</customLed>
+	<customLed index="1" name="Custom 1" isUsing="Using" usingFlagIndex="1">
+		<item keyCode="82" codeName="Up" indexX="4" indexY="1" colorR="255" colorG="0" colorB="0" transparentNum="128" />
+		<item keyCode="80" codeName="Left" indexX="5" indexY="0" colorR="255" colorG="0" colorB="0" transparentNum="128" />
+		<item keyCode="81" codeName="Down" indexX="5" indexY="1" colorR="255" colorG="0" colorB="0" transparentNum="128" />
+		<item keyCode="79" codeName="Right" indexX="5" indexY="2" colorR="255" colorG="0" colorB="0" transparentNum="128" />
+	</customLed>
+	<customLed index="2" name="Custom 2" isUsing="UnUsing" usingFlagIndex="-1" />
+	<customLed index="3" name="Custom 3" isUsing="UnUsing" usingFlagIndex="-1" />
+	<customLed index="4" name="Custom 4" isUsing="UnUsing" usingFlagIndex="-1" />
+</customLight>
