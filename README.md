@@ -84,6 +84,7 @@ device renders 0x03 as Neon).
 - [08 — Live validation history](notes/08-live-validation.md)
 - [09 — **Verified protocol (ground truth)**](notes/09-session-flow.md) ← the canonical reference
 - [10 — NEON mode: verified frame layout (Ghidra RE)](notes/10-neon-mode.md)
+- [11 — Key bindings: verified spec + plan](notes/11-key-remap-plan.md)
 
 ## Software
 
