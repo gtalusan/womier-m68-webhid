@@ -277,14 +277,14 @@ const GEO = {
 // ---- key sets from the app's profile XML (Profile2) ----
 const ALPHABET = [[2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[2,7],[2,8],[2,9],[2,10],[2,11],[2,12],[2,14],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[3,8],[3,9],[3,10],[3,11],[3,12],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11]];
 const WASD = [[2,2],[3,2],[3,3],[3,4],[4,15],[5,14],[5,15],[5,16]];
-const ARROWS = [[4,15],[5,14],[5,15],[5,16]];
+const ARROWS = [[4,16],[5,15],[5,16],[5,17]]; // vendor matrix: Up r4c16, Left r5c15, Down r5c16, Right r5c17
 // virtual key map (from the app's XML coordinates) + press engine
 const KEYMAP = {};
 "qwertyuiop[]\\".split("").forEach((ch, i) => { KEYMAP[ch] = [2, i + 1]; });
 "asdfghjkl;'".split("").forEach((ch, i) => { KEYMAP[ch] = [3, i + 2]; });
 "zxcvbnm,./".split("").forEach((ch, i) => { KEYMAP[ch] = [4, i + 2]; });
-KEYMAP["ArrowUp"] = [4, 15]; KEYMAP["ArrowLeft"] = [5, 14];
-KEYMAP["ArrowDown"] = [5, 15]; KEYMAP["ArrowRight"] = [5, 16];
+KEYMAP["ArrowUp"] = [4, 16]; KEYMAP["ArrowLeft"] = [5, 15];
+KEYMAP["ArrowDown"] = [5, 16]; KEYMAP["ArrowRight"] = [5, 17];
 const presses = []; // {r, c, t}
 let lastPressT = 0;
 window.addEventListener("keydown", (e) => {
