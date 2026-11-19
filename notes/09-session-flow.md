@@ -61,21 +61,23 @@ Brightness/speed carry the raw slider values (Qt default 0..99).
 
 Wire mode ids = the app's INTERNAL effect ids (definitively verified
 2026-11-17: the real Windows app's Neon commit wrote 0x03 and the
-device renders it as Neon — notes/10):
+device renders it as Neon — notes/10, where EVERY id below has an
+app-register anchor):
 
 | id | name | | id | name | | id | name |
 |---|---|---|---|---|---|---|---|
-| 00 | Static ✅ | | 06 | Reactive* | | 0c | Speed Respond* |
-| 01 | Breath* | | 07 | Aurora* | | 0e | Auto Ripple* |
-| 02 | Wave* | | 08 | Ripple* | | 0f | Striation* |
-| 03 | **Neon ✅** | | 09 | Twinkle* | | 10 | Fireworks* |
-| 04 | Radar* | | 0a | Custom*† | | 100 | Musical Rhythm*† |
-| 05 | Snake*† | | 0b | Cross* | | | |
+| 00 | Static ✅ | | 06 | Reactive ✅ | | 0c | Speed Respond ✅ |
+| 01 | Breath ✅ | | 07 | Aurora ✅ | | 0e | Auto Ripple ✅ |
+| 02 | Wave ✅ | | 08 | Ripple ✅ | | 0f | Striation ✅ |
+| 03 | **Neon ✅** | | 09 | Twinkle ✅ | | 10 | Fireworks ✅ |
+| 04 | Radar ✅ | | 0a | Custom ✅† | | 100 | Musical Rhythm*† |
+| 05 | Snake*† | | 0b | Cross ✅ | | | |
 
-✅ = verified (register anchor / app's own commit + device rendering).
-* = binary-verified (FUN_004a8b40 UI↔internal-id switch; SDK renderer
-dispatch FUN_1000a5d0). † = not in the device 0x0A list (which also
-contains an extra 0x11 — renders dark; uncharacterized).
+✅ = app-register-verified (the app's own commit for that mode read
+back from the device register, notes/10). * = binary-verified only
+(UI↔internal-id switch FUN_004a8b40; SDK renderer dispatch
+FUN_1000a5d0). † = not in the device 0x0A list (which also contains
+an extra 0x11 — renders dark; uncharacterized).
 
 The earlier UI-index mapping (0x01=Neon, 0x02=Breath, …) is wrong on
 the wire: the app shuffles ids internally (0x01=Breath, 0x02=Wave,
