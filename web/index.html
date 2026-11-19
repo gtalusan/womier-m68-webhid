@@ -116,6 +116,68 @@
     opacity: 0.6;
   }
   .key.on span { color: #0a0b0d; }
+
+  /* --- remap mode (always on; the rail lock gates interactions) --- */
+  .board.remap .key { pointer-events: auto; cursor: pointer; }
+  .board.remap .key:hover { border-color: #4a5161; }
+  .board.remap .key.noremap { cursor: not-allowed; opacity: 0.6; }
+  .key.sel-source { outline: 2px solid var(--warn); outline-offset: 1px; }
+  .key.staged { outline: 1px dashed var(--warn); outline-offset: 1px; }
+  .key.staged span { color: var(--warn); }
+  .key.uploaded { outline: 1px solid var(--ok); outline-offset: 1px; }
+  .key.uploaded span { color: var(--ok); }
+  .tabs { display: flex; gap: 6px; }
+  .tab {
+    flex: 1; appearance: none; cursor: pointer; font: 500 0.74rem var(--font-body);
+    background: var(--bg-3); color: var(--fg); border: 1px solid var(--frame);
+    border-radius: 7px; padding: 6px 8px; text-align: center;
+  }
+  .tab .n { display: block; font-size: 0.62rem; color: var(--fg-dim); }
+  .tab.sel { border-color: var(--warn); color: var(--warn); }
+  .tab.sel .n { color: var(--warn); }
+  .tab-summary { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--fg-dim); margin: 6px 2px 10px; }
+  .minibtn {
+    appearance: none; cursor: pointer; font: 500 0.66rem var(--font-body);
+    background: var(--bg-3); color: var(--fg); border: 1px solid var(--frame);
+    border-radius: 5px; padding: 2px 8px;
+  }
+  .minibtn:hover { border-color: #4a5161; }
+  .sel-label { font-size: 0.75rem; color: var(--fg-dim); }
+  .tray { display: flex; flex-direction: column; gap: 6px; }
+  .tray .grp { font-size: 0.66rem; color: var(--fg-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .tray .targets { display: flex; flex-wrap: wrap; gap: 4px; }
+  .target {
+    appearance: none; cursor: pointer; font: 500 0.68rem var(--font-data);
+    background: var(--bg-3); color: var(--fg); border: 1px solid var(--frame);
+    border-radius: 5px; padding: 2px 7px;
+  }
+  .target:hover { border-color: var(--warn); }
+  .staged { font-size: 0.72rem; color: var(--fg-dim); display: flex; flex-direction: column; gap: 4px; }
+  .staged .entry { display: flex; align-items: center; gap: 8px; }
+  .staged .entry b { color: var(--fg); font-weight: 500; }
+  .staged .x {
+    appearance: none; cursor: pointer; font: 600 0.7rem var(--font-body);
+    background: transparent; color: var(--fg-dim); border: 1px solid var(--frame);
+    border-radius: 4px; padding: 0 6px;
+  }
+  .staged .x:hover { color: var(--warn); border-color: var(--warn); }
+  #remap-upload, #remap-reset-prof {
+    font: 500 0.72rem var(--font-body); cursor: pointer;
+    background: var(--bg-3); color: var(--fg); border: 1px solid var(--frame);
+    border-radius: 6px; padding: 5px 12px;
+  }
+  #remap-upload:hover { border-color: var(--ok); }
+  #remap-reset-prof:hover { border-color: var(--warn); }
+  #remap-progress {
+    height: 4px; width: 0; background: var(--ok);
+    border-radius: 2px; margin-top: 8px; transition: width 120ms;
+  }
+  .board.busy .key { pointer-events: none; }
+  .chip[disabled] { opacity: 0.5; pointer-events: none; }
+  #remap-upload.busy { border-color: var(--ok); color: var(--ok); }
+  .note { font-size: 0.72rem; color: var(--fg-dim); margin-top: 8px; }
+  .note.warn { color: var(--warn); }
+  .note.ok { color: var(--ok); }
   .caption {
     display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px;
     font-family: var(--font-data); font-size: 0.68rem; color: var(--fg-dim);
@@ -220,6 +282,14 @@
     </section>
 
     <aside class="rail" aria-label="Controls">
+      <div class="tabs" id="prof-tabs"></div>
+      <div class="tab-summary">
+        <span id="prof-summary"></span>
+        <span style="flex:1"></span>
+        <button id="prof-export" type="button" class="minibtn" title="Download the profile store (JSON)">Export</button>
+        <button id="prof-import" type="button" class="minibtn" title="Load our JSON or the app's Profile XML">Import</button>
+        <input type="file" id="prof-file" accept=".json,.xml" hidden>
+      </div>
       <div class="panel">
         <h2>Effect</h2>
         <div class="modes" id="modes"></div>
@@ -250,6 +320,31 @@
           <label>Full color</label>
           <span class="toggle" id="fc" role="switch" aria-checked="false" tabindex="0"></span>
         </div>
+      </div>
+      <div class="panel" id="remap-panel">
+        <h2>Remap</h2>
+        <div class="row">
+          <label>Selection</label>
+          <span class="sel-label" id="remap-sel-label">click a key on the board</span>
+        </div>
+        <div class="row" id="remap-tray-row" hidden>
+          <label>Target</label>
+          <div class="tray" id="remap-tray"></div>
+        </div>
+        <div class="row">
+          <label>Staged</label>
+          <div class="staged" id="remap-staged">(none)</div>
+        </div>
+      </div>
+      <div class="panel" id="apply-panel">
+        <h2>Apply</h2>
+        <div class="row">
+          <button id="remap-upload" type="button">Upload to board</button>
+          <button id="remap-reset-board" type="button">Reset board</button>
+          <button id="remap-reset-prof" type="button">Reset profile</button>
+        </div>
+        <div class="progress" id="remap-progress" hidden></div>
+        <div class="note" id="remap-note"></div>
       </div>
 
     </aside>
@@ -385,6 +480,70 @@ const KBD = {
 const KEYCENTER = new Map();
 for (const k of KBD.keys) KEYCENTER.set(k.slot, { x: k.x + k.w / 2, y: k.y + k.h / 2 });
 function centerOf(r, c) { return KEYCENTER.get(r * 22 + c) ?? null; }
+
+// ---- key remapping (wire-verified: notes/11, the CLI's keymap) ----
+// The board's keymap = 132 fixed 4-byte entries, row-major 6×22:
+// entry = `00 <keyCode> 00 00` (uint32 LE = keyCode<<8), keyCode = USB
+// HID usage id, 0 = empty slot. ONE exception: slot 121 (Fn) is the
+// marker `01 00 00 00` — preserved verbatim, not remappable.
+// A remap = replace a slot's keyCode with the target's; the app always
+// uploads the full map + a pristine copy + two zero banks (0x19 DKS,
+// 0x22 aux). This replays that sequence byte-for-byte.
+const FN_SLOT = 121;
+const REMAP_NAMES = {
+  0x04:"A",0x05:"B",0x06:"C",0x07:"D",0x08:"E",0x09:"F",0x0a:"G",0x0b:"H",0x0c:"I",0x0d:"J",
+  0x0e:"K",0x0f:"L",0x10:"M",0x11:"N",0x12:"O",0x13:"P",0x14:"Q",0x15:"R",0x16:"S",0x17:"T",
+  0x18:"U",0x19:"V",0x1a:"W",0x1b:"X",0x1c:"Y",0x1d:"Z",0x1e:"1",0x1f:"2",0x20:"3",0x21:"4",
+  0x22:"5",0x23:"6",0x24:"7",0x25:"8",0x26:"9",0x27:"0",0x28:"Enter",0x29:"Esc",0x2a:"Bsp",
+  0x2b:"Tab",0x2c:"Space",0x2d:"-",0x2e:"=",0x2f:"[",0x30:"]",0x31:"\\",0x33:";",0x34:"'",
+  0x36:",",0x37:".",0x38:"/",0x39:"Caps",0x3a:"F1",0x3b:"F2",0x3c:"F3",0x3d:"F4",0x3e:"F5",
+  0x3f:"F6",0x40:"F7",0x41:"F8",0x42:"F9",0x43:"F10",0x44:"F11",0x45:"F12",0x46:"PrtSc",
+  0x47:"ScrLk",0x48:"Pause",0x49:"Ins",0x4a:"Home",0x4b:"PgUp",0x4c:"Del",0x4d:"End",
+  0x4e:"PgDn",0x4f:"Right",0x50:"Left",0x51:"Down",0x52:"Up",0xe0:"LCtrl",0xe1:"LShift",
+  0xe2:"LAlt",0xe3:"LGui",0xe5:"RShift",0xe6:"RAlt",
+};
+const REMAP_TRAY = [
+  ["F-row", [0x3a,0x3b,0x3c,0x3d,0x3e,0x3f,0x40,0x41,0x42,0x43,0x44,0x45]],
+  ["nav", [0x46,0x47,0x48,0x49,0x4a,0x4b,0x4c,0x4d,0x4e,0x4f,0x50,0x51,0x52]],
+  ["mods", [0xe0,0xe1,0xe2,0xe3,0xe5,0xe6]],
+];
+function stockMap() {
+  const buf = new Uint8Array(132 * 4);
+  for (const k of KBD.keys) {
+    if (k.slot === FN_SLOT) { buf[k.slot * 4] = 1; continue; } // Fn marker
+    buf[k.slot * 4 + 1] = k.dec & 0xff;
+  }
+  return buf;
+}
+function applyRemaps(base, overrides) {
+  const map = new Uint8Array(base);
+  for (const [slotStr, kc] of Object.entries(overrides)) {
+    const slot = Number(slotStr);
+    if (slot === FN_SLOT || !Number.isInteger(kc) || kc < 0 || kc > 0xff) continue;
+    map.fill(0, slot * 4, slot * 4 + 4);
+    map[slot * 4 + 1] = kc;
+  }
+  return map;
+}
+const RM_STORE_KEY = "m68remap";
+function rmLoad() {
+  try {
+    const s = JSON.parse(localStorage.getItem(RM_STORE_KEY));
+    if (!s || !Array.isArray(s.profiles)) throw 0;
+    return { current: Math.min(2, Math.max(0, s.current | 0)),
+             profiles: s.profiles.slice(0, 3).map((p) => ({
+               keymap: p?.keymap && typeof p.keymap === "object" ? p.keymap : {},
+               light: p?.light && typeof p.light === "object" ? p.light : null,
+             })) };
+  } catch { return { current: 0, profiles: [{ keymap: {}, light: null }, { keymap: {}, light: null }, { keymap: {}, light: null }] }; }
+}
+function rmSave(s) { try { localStorage.setItem(RM_STORE_KEY, JSON.stringify(s)); } catch {} }
+let RM = { source: null, uploaded: {}, busy: false };
+function effAction(store, slot) {
+  if (store.profiles[store.current].keymap[slot] !== undefined) return store.profiles[store.current].keymap[slot];
+  const k = KBD.keys.find((x) => x.slot === slot);
+  return k ? k.dec : 0;
+}
 // ---- key sets from the app's profile XML (Profile2) ----
 const ALPHABET = [[2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[2,7],[2,8],[2,9],[2,10],[2,11],[2,12],[2,14],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[3,8],[3,9],[3,10],[3,11],[3,12],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11]];
 const WASD = [[2,2],[3,2],[3,3],[3,4],[4,15],[5,14],[5,15],[5,16]];
@@ -475,6 +634,7 @@ function buildKeys() {
     const el = mk(k, 1.25);
     el.className = "key";
     el.dataset.slot = k.slot;
+    el.addEventListener("click", () => remapCapClick(k.slot));
     keyEl.set(k.slot, el);
     keys.push(el);
   }
@@ -861,8 +1021,306 @@ function sync() {
 buildKeys();
 buildModes();
 let dev = null, outReport = null; // declared before boot sync(): the hint reads `dev`
+$("board").classList.add("remap"); // remap is always on; the rail lock gates it
+refreshProfiles();
+remapRefresh();
 sync();
 requestAnimationFrame(loop);
+
+// ---- remap UI (click-to-remap; press-to-remap needs a vendor-channel
+// key stream that the probe didn't find — notes/13) ----
+function remapNote(msg, kind) {
+  const n = $("remap-note");
+  n.textContent = msg;
+  n.className = "note" + (kind ? " " + kind : "");
+}
+function remapCapClick(slot) {
+  if (RM.busy) return;
+  if (slot === FN_SLOT) { remapNote("Fn is a firmware marker — not remappable", "warn"); return; }
+  const store = rmLoad();
+  const over = store.profiles[store.current].keymap;
+  if (RM.source === null) { RM.source = slot; remapRefresh(); return; }
+  if (RM.source === slot) { RM.source = null; remapRefresh(); return; }
+  // swap: each side takes the other's effective action (read both
+  // first — writing one before reading the other corrupts the swap)
+  const a = RM.source, b = slot;
+  const ea = effAction(store, a), eb = effAction(store, b);
+  over[a] = eb;
+  over[b] = ea;
+  rmSave(store);
+  RM.source = null;
+  remapRefresh();
+}
+function assignRemap(slot, kc) {
+  const store = rmLoad();
+  store.profiles[store.current].keymap[slot] = kc;
+  rmSave(store);
+  RM.source = null;
+  remapRefresh();
+}
+function clearRemap(slot) {
+  const store = rmLoad();
+  delete store.profiles[store.current].keymap[slot];
+  rmSave(store);
+  RM.source = null;
+  remapRefresh();
+}
+function refreshProfiles() {
+  const store = rmLoad();
+  const ps = $("prof-tabs");
+  ps.innerHTML = "";
+  for (let i = 0; i < 3; i++) {
+    const b = document.createElement("button");
+    b.className = "tab" + (i === store.current ? " sel" : "");
+    const n = Object.keys(store.profiles[i].keymap).length;
+    b.innerHTML = `Profile ${i + 1}<span class="n">${n} remap${n === 1 ? "" : "s"}</span>`;
+    b.onclick = () => profileSelect(i);
+    ps.appendChild(b);
+  }
+  const p = store.profiles[store.current];
+  const nRemaps = Object.keys(p.keymap).length;
+  const light = p.light
+    ? `${p.light.mode} b${p.light.b} s${p.light.s} ${p.light.fg}${p.light.fc ? " ·fc" : ""}`
+    : "(no light stored yet)";
+  $("prof-summary").textContent = `${nRemaps} remap(s) · ${light}`;
+}
+function profileSelect(i) {
+  const s = rmLoad();
+  s.current = i;
+  rmSave(s);
+  RM.source = null;
+  // load the profile's stored light into the preview and the board.
+  // The device has ONE light register — the profile's light is
+  // XML-side state; the board follows the selection, like every
+  // control here commits. A profile with no config defaults to
+  // Static black (off) — and that default becomes its config.
+  const L = s.profiles[i].light;
+  if (L && MODES.some(([n]) => n === L.mode)) {
+    S.mode = L.mode; S.b = L.b; S.s = L.s; S.fg = L.fg; S.bg = L.bg; S.dir = L.dir; S.fc = L.fc;
+  } else {
+    S.mode = "Static"; S.b = 0; S.s = 3; S.fg = "#ff0000"; S.bg = "#000000"; S.dir = 0; S.fc = false;
+    s.profiles[i].light = { mode: S.mode, b: S.b, s: S.s, fg: S.fg, bg: S.bg, dir: S.dir, fc: S.fc };
+    rmSave(s);
+  }
+  _sync0();
+  if (dev) commitCurrent();
+  refreshProfiles();
+  remapRefresh();
+}
+function profileExport() {
+  const blob = new Blob([JSON.stringify(rmLoad(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "m68-profiles.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  remapNote("profile store exported", "ok");
+}
+async function profileImport(file) {
+  try {
+    const text = (await file.text()).trim();
+    let store;
+    if (text.startsWith("{")) {
+      const s = JSON.parse(text);
+      if (!s || !Array.isArray(s.profiles)) throw new Error("not an m68 profile export");
+      store = rmLoad();
+      for (let i = 0; i < 3; i++) {
+        if (!s.profiles[i]) continue;
+        store.profiles[i].keymap = { ...store.profiles[i].keymap, ...(s.profiles[i].keymap ?? {}) };
+        if (s.profiles[i].light) store.profiles[i].light = s.profiles[i].light;
+      }
+      if (Number.isInteger(s.current)) store.current = Math.min(2, Math.max(0, s.current));
+    } else if (text.startsWith("<")) {
+      // the app's per-profile XML: <keyEvent> items → the selected profile
+      const keyEvent = text.match(/<keyEvent>([\s\S]*?)<\/keyEvent>/);
+      if (!keyEvent) throw new Error("no <keyEvent> section in the XML");
+      const over = {};
+      for (const m of keyEvent[1].matchAll(/<item\s+[^>]*\/>/g)) {
+        const kc = m[0].match(/keyCode="(-?\d+)"/)?.[1];
+        const op = m[0].match(/operateType="(\d+)"/)?.[1];
+        const val = m[0].match(/Value="(-?\d+)"/)?.[1];
+        if (op !== "0" || kc === undefined || val === undefined || Number(val) === Number(kc)) continue;
+        const k = KBD.keys.find((x) => x.dec === Number(kc));
+        if (k && k.slot !== FN_SLOT) over[k.slot] = Number(val);
+      }
+      store = rmLoad();
+      store.profiles[store.current].keymap = { ...store.profiles[store.current].keymap, ...over };
+    } else {
+      throw new Error("unrecognized file — want our JSON export or the app's Profile XML");
+    }
+    rmSave(store);
+    refreshProfiles();
+    remapRefresh();
+    remapNote(`imported ${file.name}`, "ok");
+  } catch (e) {
+    remapNote(`import failed: ${e.message}`, "warn");
+  }
+}
+$("prof-export").addEventListener("click", profileExport);
+$("prof-import").addEventListener("click", () => $("prof-file").click());
+$("prof-file").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (f) profileImport(f);
+  e.target.value = "";
+});
+function remapRefresh() {
+  const store = rmLoad();
+  const over = store.profiles[store.current].keymap;
+  refreshProfiles();
+  for (const k of KBD.keys) {
+    const el = keyEl.get(k.slot);
+    if (!el) continue;
+    const span = el.querySelector("span");
+    const o = over[k.slot];
+    span.textContent = o !== undefined ? (REMAP_NAMES[o] ?? "0x" + o.toString(16)) : k.label;
+    el.classList.remove("staged", "uploaded", "sel-source", "noremap");
+    if (k.slot === FN_SLOT) el.classList.add("noremap");
+    if (o !== undefined) el.classList.add(RM.uploaded[k.slot] === o ? "uploaded" : "staged");
+    if (RM.source === k.slot) el.classList.add("sel-source");
+  }
+  const sel = RM.source !== null ? KBD.keys.find((k) => k.slot === RM.source) : null;
+  $("remap-sel-label").textContent = sel
+    ? `${sel.label} — pick a target, click another key to swap, or reset`
+    : "click a key on the board";
+  const trayRow = $("remap-tray-row");
+  trayRow.hidden = !sel;
+  const tray = $("remap-tray");
+  tray.innerHTML = "";
+  if (sel) {
+    for (const [grp, codes] of REMAP_TRAY) {
+      const g = document.createElement("div");
+      g.className = "grp";
+      g.textContent = grp;
+      const t = document.createElement("div");
+      t.className = "targets";
+      for (const kc of codes) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "target";
+        b.textContent = REMAP_NAMES[kc];
+        b.onclick = () => assignRemap(sel.slot, kc);
+        t.appendChild(b);
+      }
+      tray.appendChild(g);
+      tray.appendChild(t);
+    }
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "target";
+    reset.textContent = "↺ reset this key";
+    reset.onclick = () => clearRemap(sel.slot);
+    tray.appendChild(reset);
+  }
+  const staged = $("remap-staged");
+  staged.innerHTML = "";
+  const entries = Object.entries(over);
+  if (!entries.length) staged.textContent = "(none)";
+  for (const [slotStr, kc] of entries) {
+    const src = KBD.keys.find((k) => k.slot === Number(slotStr));
+    const e = document.createElement("div");
+    e.className = "entry";
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "x";
+    x.textContent = "×";
+    x.onclick = () => clearRemap(Number(slotStr));
+    const b = document.createElement("b");
+    b.textContent = `${src?.label ?? slotStr} → ${REMAP_NAMES[kc] ?? "0x" + kc.toString(16)}`;
+    e.append(x, b);
+    staged.appendChild(e);
+  }
+}
+async function remapUpload() {
+  const store = rmLoad();
+  const over = store.profiles[store.current].keymap;
+  if (!dev) { remapNote("connect the keyboard first", "warn"); return; }
+  const map = applyRemaps(stockMap(), over);
+  await remapSend(map, `uploaded ${Object.keys(over).length} remap(s) — board updated`, over);
+}
+async function remapBoardReset() {
+  // full reset: push the stock keymap AND clear the profile's staged
+  // overrides (a board reset implies a profile reset — nothing staged
+  // is left dangling as "not on the board")
+  if (!dev) { remapNote("connect the keyboard first", "warn"); return; }
+  const store = rmLoad();
+  store.profiles[store.current].keymap = {};
+  rmSave(store);
+  RM.source = null;
+  await remapSend(stockMap(), "board + profile reset to stock", {});
+}
+async function remapSend(map, okMsg, uploadedSnapshot) {
+  if (RM.busy) return;
+  RM.busy = true;
+  // hard-lock everything that could interleave: controls, caps, chips
+  document.querySelector(".rail").classList.add("locked");
+  $("board").classList.add("busy");
+  $("connect").disabled = true;
+  $("remap-upload").classList.add("busy");
+  $("remap-upload").textContent = "Uploading…";
+  const unlock = () => {
+    RM.busy = false;
+    document.querySelector(".rail").classList.remove("locked");
+    $("board").classList.remove("busy");
+    $("connect").disabled = false;
+    $("remap-upload").classList.remove("busy");
+    $("remap-upload").textContent = "Upload to board";
+  };
+  const frames = [];
+  const push = (cmd, seg, pkt, len, chunk) => {
+    const p = new Uint8Array(64);
+    p[0] = 1; p[1] = cmd; p[2] = seg; p[4] = pkt; p[5] = len;
+    p.set(chunk, 6);
+    frames.push({ f: p, pace: cmd === 0x18 ? 400 : 100 });
+  };
+  for (const [seg, buf] of [[0, map], [2, stockMap()]]) {
+    for (let off = 0, pkt = 0; off < buf.length; off += 56, pkt++) {
+      push(0x18, seg, pkt, Math.min(56, buf.length - off), buf.subarray(off, off + 56));
+    }
+  }
+  for (let seg = 0; seg < 10; seg++) {
+    const z = new Uint8Array(256);
+    for (let off = 0, pkt = 0; off < 256; off += 58, pkt++) {
+      push(0x19, seg, pkt, Math.min(58, 256 - off), z.subarray(off, off + 58));
+    }
+  }
+  for (let pkt = 0; pkt < 40; pkt++) push(0x22, pkt, 0, 50, new Uint8Array(50));
+  const prog = $("remap-progress");
+  prog.hidden = false;
+  prog.style.width = "0";
+  remapNote("uploading 0% — do NOT unplug the keyboard mid-upload", "warn");
+  let done = 0;
+  sendQueue = sendQueue.then(async () => {
+    for (const { f, pace } of frames) {
+      if (!dev) throw new Error("keyboard disconnected mid-upload — replug and retry");
+      const body = new Uint8Array(f.subarray(1));
+      try { await dev.sendReport(outReport.reportId, body); }
+      catch { await dev.sendReport(outReport.reportId, new Uint8Array(f)); }
+      await new Promise((r) => setTimeout(r, pace));
+      done++;
+      prog.style.width = (done / frames.length * 100) + "%";
+      remapNote(`uploading ${Math.round(done / frames.length * 100)}% — do NOT unplug the keyboard mid-upload`, "warn");
+    }
+  }).then(() => {
+    RM.uploaded = { ...uploadedSnapshot };
+    unlock();
+    remapRefresh();
+    remapNote(okMsg, "ok");
+    prog.hidden = true;
+  }).catch((e) => {
+    unlock();
+    remapNote(e.message, "warn");
+    prog.hidden = true;
+  });
+}
+$("remap-upload").addEventListener("click", remapUpload);
+$("remap-reset-board").addEventListener("click", remapBoardReset);
+$("remap-reset-prof").addEventListener("click", () => {
+  const s = rmLoad();
+  s.profiles[s.current].keymap = {};
+  rmSave(s);
+  RM.source = null;
+  remapRefresh();
+});
 
 // ---- WebHID transport (verified protocol: notes/10) ----
 const HID_VID = 0x0416, HID_PID = 0x7372;
@@ -950,6 +1408,7 @@ function setGate(kind, msg) {
 }
 async function connectHid() {
   const btn = $("connect");
+  if (connected) { await disconnectHid(); return; }
   if (!navigator.hid) {
     btn.textContent = "WebHID needs Chrome/Edge";
     btn.style.borderColor = "var(--warn)";
@@ -957,14 +1416,16 @@ async function connectHid() {
     return;
   }
   try {
-    const ds = await navigator.hid.requestDevice({ filters: [{ vendorId: HID_VID, productId: HID_PID }] });
+    // previously granted? reopen without the chooser
+    let ds = await navigator.hid.getDevices();
+    if (!ds.length) ds = await navigator.hid.requestDevice({ filters: [{ vendorId: HID_VID, productId: HID_PID }] });
     dev = ds[0];
     if (!dev) return;
     await dev.open();
     outReport = dev.collections.flatMap((c) => c.outputReports).find((r) => r.reportId === 1)
       ?? dev.collections.flatMap((c) => c.outputReports)[0];
     dev.addEventListener("inputreport", onInputReport);
-    btn.textContent = "Connected";
+    btn.textContent = "Disconnect keyboard";
     btn.style.borderColor = "var(--ok)";
     connected = true;
     setGate(null);
@@ -980,11 +1441,21 @@ async function connectHid() {
     console.warn(e);
   }
 }
+async function disconnectHid() {
+  if (!dev) return;
+  try { await dev.close(); } catch {}
+  dev = null; connected = false; outReport = null;
+  RM.source = null; remapRefresh();
+  $("connect").textContent = "Connect keyboard";
+  $("connect").style.borderColor = "";
+  setGate("warn", "<b>Keyboard released.</b> Click Connect keyboard to re-attach (no chooser needed).");
+}
 $("connect").addEventListener("click", connectHid);
 if (navigator.hid) {
   navigator.hid.addEventListener("disconnect", (e) => {
     if (e.device === dev) {
       dev = null; connected = false;
+      RM.source = null; remapRefresh();
       $("connect").textContent = "Reconnect keyboard";
       $("connect").style.borderColor = "";
       setGate("warn", "<b>Keyboard disconnected.</b> Reconnect it and click the button.");
@@ -998,10 +1469,16 @@ if (!navigator.hid) {
   setGate("warn", "<b>No keyboard connected.</b> Click Connect keyboard and pick the M68 HE to unlock the controls.");
 }
 
-// commit real frames on every control change (when connected)
+// commit real frames on every control change (when connected), and
+// remember the light into the selected profile (XML-side, like the
+// app's per-profile <light0> nodes)
 const _sync0 = sync;
 sync = function () {
   _sync0();
+  const store = rmLoad();
+  store.profiles[store.current].light = { mode: S.mode, b: S.b, s: S.s, fg: S.fg, bg: S.bg, dir: S.dir, fc: S.fc };
+  rmSave(store);
+  refreshProfiles();
   if (dev) commitCurrent();
 };
 </script>

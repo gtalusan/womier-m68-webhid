@@ -75,3 +75,34 @@ gradient + additive glow. Geometry is exact.
   stay, one flag re-enables). The measurement agrees: the app draws
   nothing at the rail's config position below the space row, and the
   rail isn't on the physical board.
+
+## Input-channel probe (WebHID) + click-to-remap UI
+
+`web/probe-hid.html` opened every collection the chooser offers
+(Chrome hides the boot-keyboard collection — protected usage):
+
+- `0x0001/0x02` (mouse composite): inert, no reports.
+- `0x000C/0x01` (Consumer Control): 2-byte `00 00` heartbeats; Fn
+  press fires reports but payload stays `00 00`; Fn+1-9/0 = nothing
+  (onboard profile switch, firmware-internal). Fn-combo media keys
+  presumably land here — unverified.
+- `0xFF1B/0x91` (vendor): answers queries only; no key reports even
+  after the 0x0D handshake or the app's full session-start sequence.
+
+**Verdict: normal keypresses are invisible to WebHID**, so the
+press-to-remap loop is shelved. The remaining lead (unpursued): the
+app's 0x04/0x05 "Six Key" echo proves key reports reach the app
+somewhere — probably gated by a trigger sent when its custom-keys
+page opens (never captured; a usb9.log of that page would show it).
+
+**Shipped instead: click-to-remap** on the faithful render —
+`Remap: on` chip → click a cap (amber) → pick a target from the
+tray (F-row/nav/mods, the verified key targets) or click a second
+cap to **swap**; per-profile (0-2) staged overrides in
+`localStorage`, per-entry undo, reset-profile, and **Upload** that
+replays the byte-verified Download sequence (0x18 seg0+seg2 @400ms,
+0x19 ×10, 0x22 ×40 @100ms) with a progress bar and a
+never-unplug-mid-upload warning. Fn is locked (marker slot).
+`stockMap()`/`applyRemaps()` in the webapp are byte-identical to
+usb7 seg[2]/seg[0]. Swap had a read-after-write bug (both sides
+took B's action) — fixed and re-verified.
