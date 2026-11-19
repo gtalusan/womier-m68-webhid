@@ -1052,7 +1052,7 @@ function sync() {
 
 buildKeys();
 buildModes();
-let dev = null, outReport = null; // declared before boot sync(): the hint reads `dev`
+let dev = null, outReport = null, connected = false; // before boot: the hint + profile gate read them
 $("board").classList.add("remap"); // remap is always on; the rail lock gates it
 refreshProfiles();
 remapRefresh();
@@ -1098,16 +1098,22 @@ function clearRemap(slot) {
   remapRefresh();
 }
 function refreshProfiles() {
-  const store = rmLoad();
+  // profiles only initialize once a keyboard is connected — before
+  // that, the tabs show no state (the store is left untouched)
+  const store = connected ? rmLoad() : null;
   const ps = $("prof-tabs");
   ps.innerHTML = "";
   for (let i = 0; i < 3; i++) {
     const b = document.createElement("button");
-    b.className = "tab" + (i === store.current ? " sel" : "");
-    const n = Object.keys(store.profiles[i].keymap).length;
+    b.className = "tab" + (store && i === store.current ? " sel" : "");
+    const n = store ? Object.keys(store.profiles[i].keymap).length : 0;
     b.innerHTML = `Profile ${i + 1}<span class="n">${n} remap${n === 1 ? "" : "s"}</span>`;
     b.onclick = () => profileSelect(i);
     ps.appendChild(b);
+  }
+  if (!store) {
+    $("prof-summary").textContent = "connect a keyboard to load profiles";
+    return;
   }
   const p = store.profiles[store.current];
   const nRemaps = Object.keys(p.keymap).length;
@@ -1199,6 +1205,24 @@ $("prof-file").addEventListener("change", (e) => {
   e.target.value = "";
 });
 function remapRefresh() {
+  if (!connected) {
+    // pristine presentation until a keyboard connects: stock legends,
+    // no staged marks, no selection (the store itself stays untouched)
+    RM.source = null;
+    for (const k of KBD.keys) {
+      const el = keyEl.get(k.slot);
+      if (!el) continue;
+      el.querySelector("span").textContent = k.label;
+      el.classList.remove("staged", "uploaded", "sel-source", "noremap");
+      if (k.slot === FN_SLOT) el.classList.add("noremap");
+    }
+    $("remap-sel-label").textContent = "click a key on the board";
+    $("remap-tray-row").hidden = true;
+    $("remap-tray").innerHTML = "";
+    $("remap-staged").textContent = "connect a keyboard to load remaps";
+    refreshProfiles();
+    return;
+  }
   const store = rmLoad();
   const over = store.profiles[store.current].keymap;
   refreshProfiles();
@@ -1449,7 +1473,6 @@ function onInputReport(e) {
     // second response = build date ("Mar 26 2024,11:06:05") — ignored
   }
 }
-let connected = false;
 function setGate(kind, msg) {
   const gate = $("gate");
   const rail = document.querySelector(".rail");
@@ -1489,6 +1512,8 @@ async function connectHid() {
     btn.style.borderColor = "var(--ok)";
     connected = true;
     setGate(null);
+    refreshProfiles(); // hydrate the profile/remap state now that a board exists
+    remapRefresh();
     // off until the register readback answers — UI only, no commit
     S.b = 0; S.s = 0; S.fg = "#000000"; S.bg = "#000000"; S.fc = false;
     _sync0();
