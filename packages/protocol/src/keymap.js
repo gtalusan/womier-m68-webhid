@@ -84,6 +84,66 @@ export function keycodeFromName(name) {
   return NAME_TO_KC[String(name).toLowerCase()];
 }
 
+// Media bindings (operateType 3): entry = `07 <id'> 00 00`, id' =
+// the firmware's media byte (notes/14, FUN_0047be90). The XML/media
+// ids 0-15 are the app's UI list; the wire byte differs per id.
+export const MEDIA_NAMES = Object.freeze({
+  0: "Vol+", 1: "Vol-", 2: "Mute", 3: "Play/Pause", 4: "Next", 5: "Prev",
+  6: "Stop", 7: "Media7", 8: "Player", 9: "Calc", 10: "Computer",
+  11: "Browser", 12: "Email", 13: "Brt+", 14: "Brt-", 15: "Search",
+});
+export const MEDIA_WIRE = Object.freeze({
+  0: 0x10, 1: 0x11, 2: 0x12, 3: 0x13, 4: 0x14, 5: 0x15, 6: 0x16, 7: 0x17,
+  8: 0x30, 9: 0x32, 10: 0x34, 11: 0x23, 12: 0x20, 13: 0x38, 14: 0x39, 15: 0x21,
+});
+const MEDIA_BY_WIRE = {};
+for (const [id, wire] of Object.entries(MEDIA_WIRE)) MEDIA_BY_WIRE[wire] = Number(id);
+
+// Mouse bindings (operateType 4): entry = `12 <isScroll> <btn> 00`
+// (notes/14, FUN_0047bfa0/bfe0). isScroll = 1 for the wheel actions
+// (ids 3/4); btn = the button/wheel byte.
+export const MOUSE_NAMES = Object.freeze({
+  0: "LeftClick", 1: "MiddleClick", 2: "RightClick", 3: "ScrollUp",
+  4: "ScrollDown", 5: "Forward", 6: "Backward", 7: "Sniper",
+});
+export const MOUSE_BTN = Object.freeze({
+  0: 0x01, 1: 0x04, 2: 0x02, 3: 0x01, 4: 0xff, 5: 0x10, 6: 0x08, 7: 0x00,
+});
+export function mouseWire(id) {
+  return [(id === 3 || id === 4) ? 1 : 0, MOUSE_BTN[id] ?? 0];
+}
+
+/** Display name for a remap target: a keycode number, or "media:N" /
+ *  "mouse:N" strings (see applyRemaps). */
+export function targetLabel(target) {
+  if (typeof target === "string") {
+    if (target.startsWith("media:")) {
+      const id = Number(target.slice(6));
+      return MEDIA_NAMES[id] ?? `media ${id}`;
+    }
+    if (target.startsWith("mouse:")) {
+      const id = Number(target.slice(6));
+      return MOUSE_NAMES[id] ?? `mouse ${id}`;
+    }
+  }
+  return KEY_NAME[target] ?? `0x${target.toString(16)}`;
+}
+
+/** Display name for a keymap ENTRY's byte1, by marker byte: 0 = key,
+ *  7 = media (wire id'), 0x12 = mouse (button byte), else unknown. */
+export function entryLabel(marker, b1) {
+  if (marker === 0x07) {
+    const id = MEDIA_BY_WIRE[b1];
+    return id !== undefined ? `Media:${MEDIA_NAMES[id]}` : `Media:0x${b1.toString(16)}`;
+  }
+  if (marker === 0x12) {
+    const id = Object.entries(MOUSE_BTN).find(([, b]) => b === b1)?.[0];
+    return id !== undefined ? `Mouse:${MOUSE_NAMES[id]}` : `Mouse:0x${b1.toString(16)}`;
+  }
+  if (marker === 0) return KEY_NAME[b1] ?? `0x${b1.toString(16)}`;
+  return `0x${marker.toString(16)}:0x${b1.toString(16)}`;
+}
+
 /** slot → name, for the 68 physical keys. */
 export const SLOT_NAME = Object.freeze(
   Object.fromEntries(PHYSICAL_KEYS.map(([slot, kc]) => [slot, USAGE_NAMES[kc] ?? `0x${kc.toString(16)}`]))
@@ -102,9 +162,11 @@ export function stockKeymap() {
 }
 
 /**
- * Apply remap overrides to a keymap: { slot: targetKeyCode }.
- * Remap entry = `00 <target> 00 00` (the goal binding PgUp→PrtSc is
- * wire-verified: slot 82 = 0x46). The Fn marker is preserved.
+ * Apply remap overrides to a keymap: { slot: target }.
+ * target = a HID keycode (number) → `00 <target> 00 00` (the goal
+ * binding PgUp→PrtSc is wire-verified: slot 82 = 0x46), or a
+ * `"media:N"` string → `07 <id'> 00 00` (notes/14). The Fn marker
+ * is preserved.
  */
 export function applyRemaps(base, overrides = {}) {
   const map = Buffer.from(base);
@@ -114,10 +176,26 @@ export function applyRemaps(base, overrides = {}) {
       throw new Error(`bad slot ${slotStr}`);
     }
     if (slot === FN_SLOT) throw new Error("the Fn key is not remappable");
+    map.fill(0, slot * 4, slot * 4 + 4);
+    if (typeof target === "string" && target.startsWith("media:")) {
+      const id = Number(target.slice(6));
+      if (!(id in MEDIA_WIRE)) throw new Error(`bad media id ${id} for slot ${slot}`);
+      map[slot * 4] = 0x07; // media marker
+      map[slot * 4 + 1] = MEDIA_WIRE[id];
+      continue;
+    }
+    if (typeof target === "string" && target.startsWith("mouse:")) {
+      const id = Number(target.slice(6));
+      if (!(id in MOUSE_NAMES)) throw new Error(`bad mouse id ${id} for slot ${slot}`);
+      const [scroll, btn] = mouseWire(id);
+      map[slot * 4] = 0x12; // mouse marker
+      map[slot * 4 + 1] = scroll;
+      map[slot * 4 + 2] = btn;
+      continue;
+    }
     if (!Number.isInteger(target) || target < 0 || target > 0xff) {
       throw new Error(`bad target keycode ${target} for slot ${slot}`);
     }
-    map.fill(0, slot * 4, slot * 4 + 4);
     map[slot * 4 + 1] = target;
   }
   return map;

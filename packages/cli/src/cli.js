@@ -85,9 +85,31 @@ const ALIASES = {
   lalt: "LeftAlt", ralt: "RightAlt", lwin: "LeftGui", rwin: "RightGui",
   up: "Up", down: "Down", left: "Left", right: "Right", space: "Space",
 };
+// media targets (operateType 3) — "media:N" where N = the app's
+// media id 0-15; the wire byte comes from keymap.MEDIA_WIRE (notes/14)
+const MEDIA_ALIASES = {
+  "vol+": 0, volup: 0, "vol-": 1, voldown: 1, vol: 0, mute: 2,
+  "play/pause": 3, playpause: 3, play: 3, pause: 3,
+  next: 4, nexttrack: 4, prev: 5, previous: 5, prevtrack: 5, stop: 6,
+  player: 8, media: 8, calc: 9, calculator: 9, computer: 10, mycomputer: 10,
+  browser: 11, web: 11, email: 12, mail: 12, "brt+": 13, "brt-": 14,
+  brightnessup: 13, brightnessdown: 14, search: 15,
+};
+// mouse targets (operateType 4) — "mouse:N". Names chosen to not
+// collide with the arrow-key aliases (Left/Right remain keys).
+const MOUSE_ALIASES = {
+  leftclick: 0, middleclick: 1, centerclick: 1, rightclick: 2,
+  scrollup: 3, scrolldown: 4, wheelup: 3, wheeldown: 4,
+  forward: 5, backward: 6, sniper: 7,
+};
 
-/** Name/alias → HID keycode (targets); also accepts 0x-hex or decimal. */
+/** Name/alias → HID keycode (targets); also accepts 0x-hex or decimal.
+ *  Media/mouse names → "media:N" / "mouse:N" strings. */
 function parseTarget(s) {
+  const mname = MEDIA_ALIASES[s.toLowerCase()];
+  if (mname !== undefined) return `media:${mname}`;
+  const moname = MOUSE_ALIASES[s.toLowerCase()];
+  if (moname !== undefined) return `mouse:${moname}`;
   const name = ALIASES[s.toLowerCase()] ?? s;
   const kc = keymap.keycodeFromName(name);
   if (kc !== undefined) return kc;
@@ -412,10 +434,11 @@ async function main() {
           for (let c = 0; c < keymap.MATRIX_COLS; c++) {
             const slot = r * keymap.MATRIX_COLS + c;
             if (slot === keymap.FN_SLOT) { cells.push("Fn"); continue; }
+            const marker = map[slot * 4];
             const kc = map[slot * 4 + 1];
-            if (!kc) { cells.push("·"); continue; }
-            const name = keymap.KEY_NAME[kc] ?? `0x${kc.toString(16)}`;
-            if (kc !== stock[slot * 4 + 1]) {
+            if (!marker && !kc) { cells.push("·"); continue; }
+            const name = keymap.entryLabel(marker, kc);
+            if (marker !== stock[slot * 4] || kc !== stock[slot * 4 + 1]) {
               cells.push(`${name}←${keymap.SLOT_NAME[slot]}`);
               remaps.push(`${keymap.SLOT_NAME[slot]} -> ${name}`);
             } else {
@@ -436,8 +459,14 @@ async function main() {
           const slot = slotFromName(k);
           if (slot === undefined) fail(`keymap set: unknown key "${k}" (physical keys only)`);
           const target = parseTarget(t);
-          if (target === undefined || target < 0 || target > 0xff) {
-            fail(`keymap set: unknown target "${t}"`);
+          if (target === undefined) fail(`keymap set: unknown target "${t}"`);
+          if (typeof target === "string") {
+            const [kind, val] = target.split(":");
+            const id = Number(val);
+            if (kind === "media" && !(id in keymap.MEDIA_WIRE)) fail(`keymap set: bad media id in "${t}"`);
+            if (kind === "mouse" && !(id in keymap.MOUSE_NAMES)) fail(`keymap set: bad mouse id in "${t}"`);
+          } else if (target < 0 || target > 0xff) {
+            fail(`keymap set: bad target keycode in "${t}"`);
           }
           overrides[slot] = target;
         }
@@ -446,8 +475,8 @@ async function main() {
           const old = store.profiles[profile].keymap[slot];
           store.profiles[profile].keymap[slot] = target;
           changed.push(
-            `${keymap.SLOT_NAME[slot]} -> ${keymap.KEY_NAME[target] ?? `0x${target.toString(16)}`}` +
-            (old !== undefined ? ` (was 0x${old.toString(16)})` : "")
+            `${keymap.SLOT_NAME[slot]} -> ${keymap.targetLabel(target)}` +
+            (old !== undefined ? ` (was ${keymap.targetLabel(old)})` : "")
           );
         }
         saveStore(store);
@@ -489,7 +518,7 @@ async function main() {
       if (sub === "list") {
         for (let i = 0; i < PROFILE_COUNT; i++) {
           const remaps = Object.entries(store.profiles[i].keymap).map(
-            ([slot, kc]) => `${keymap.SLOT_NAME[slot]} -> ${keymap.KEY_NAME[kc] ?? `0x${kc.toString(16)}`}`
+            ([slot, kc]) => `${keymap.SLOT_NAME[slot]} -> ${keymap.targetLabel(kc)}`
           );
           console.log(`  profile ${i}${i === store.current ? " *" : ""}: remaps=${remaps.length ? remaps.join(", ") : "(none)"}`);
         }

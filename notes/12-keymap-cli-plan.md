@@ -1,8 +1,8 @@
 # 12 — Keymap CLI: feasibility plan (profile-aware m68ctl)
 
-Status: IMPLEMENTED (2026-11-19) — CLI code lands; live probes P0–P2
-pending. Wire spec for the keymap upload is wire-validated (usb7/usb8
-— see notes/11 STATUS).
+Status: IMPLEMENTED (2026-11-19) — CLI + web UI land; P2 closed, P0/P1
+still open. Wire spec for the keymap upload is wire-validated
+(usb7/usb8 — see notes/11 STATUS).
 
 **Implementation log (live-verified 2026-11-19):**
 - **Full Download replay WORKS on the board** — `keymap set
@@ -39,11 +39,12 @@ against the real Profile2.xml on the VM.
   (3 profiles, 0-based per user decision; current-profile pointer;
   per-profile keymap overrides + last light effect).
 - `cli/src/cli.js`: `keymap show|set|reset|upload`, `profile
-  list|use|current`, `--profile` on all light commands (light
-  commits are remembered into the profile record). Name aliases
+  list|use|current|import|export`. Name aliases
   (PrtSc, PgUp, …) + hex/decimal targets. Note: the keymap carries
   **66 physical keys** + the Fn marker — the "M68" name is not a key
   count (the vendor's customLed XML covers only a 37-key subset).
+  (Earlier builds remembered light per profile on `light` commands —
+  removed once P2 showed profiles are an XML-only concept.)
 
 ## Feasibility verdict
 
@@ -130,18 +131,17 @@ light … [--profile N]                store/commit light config per profile
 
 ## Probes (Linux VM, ~15 min, before finalizing defaults)
 
-- **P0 — ACK check:** after an upload, short-timeout reads until
-  quiet; count + dump any reports. Decides drain-vs-ignore.
-- **P1 — minimal upload:** full app-faithful replay first (known
-  good; never unplug mid-stream), test the key, then drop seg[2] →
-  test, then drop 0x19/0x22 → test. Decides whether the trailing
-  data is mandatory. Also: replug → test key again (persistence).
-- **P2 — profile register hunt:** dump all known registers (0x07
-  reserved byte, 0x08, 0x0E flags, 0x14, 0x21) → switch profile in
-  the app (keyboard on the Win VM) or via board Fn combos → re-dump
-  → diff. A changing byte = the "profile register dump" the CLI can
-  default to. If nothing changes, default stays 0 and "profile" is
-  documented as app-side.
+- **P0 — ACK check:** OPEN. After an upload, short-timeout reads until
+  quiet; count + dump any reports. Decides drain-vs-ignore. (The CLI
+  drains either way, so this is informational.)
+- **P1 — minimal upload:** OPEN. `keymap upload --minimal` exists
+  (seg[0] only). The clean isolation test is still to run:
+  reset→stock→replug→minimal→test→replug. If seg[0] alone commits +
+  persists, the upload drops from ~17 s to ~4 s.
+- **P2 — profile register hunt:** CLOSED (2026-11-19). Board-side
+  profile switch left every known register byte-identical — no
+  device-side profile state. `--profile` defaults to the store's
+  current (0).
 
 ## Work breakdown
 
