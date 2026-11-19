@@ -25,6 +25,10 @@ export const CMD = Object.freeze({
   LIVE_GRID: 0x0f, // live-preview grid chunks: [2]=group(0=kbd,1=side),
                     // [4]=chunk#, [5]=len, [6..]=RGB — renders live while
                     // streaming; reverts to the committed state on stop
+  // --- keymap Download upload (wire-validated, usb7/usb8 — notes/11) ---
+  ONBOARD_DATA: 0x18, // compiled 132-entry keymap; [2]=seg(0=active map,2=pristine), [4]=pkt#, [5]=len
+  SENIOR_KEY: 0x19, // SeniorKey/DKS banks (app 0x18); 10 segs × 256 B, zeros = unused
+  KEYMAP_AUX: 0x22, // app 0x2A; 40 × 50 B = 2000 B, all-zero — role unknown, replayed verbatim
 });
 
 /**

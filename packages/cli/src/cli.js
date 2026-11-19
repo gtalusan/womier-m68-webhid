@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // m68ctl — configure the Womier M68 HE from Linux.
 // Verified commands only (notes/09-session-flow.md).
-import { M68Session, CMD, buildFrame, checkResponse, hexdump, ascii, EFFECT } from "@m68/protocol";
+import { M68Session, CMD, buildFrame, checkResponse, hexdump, ascii, EFFECT, keymap } from "@m68/protocol";
 import { HidrawTransport } from "./hidraw.js";
+import { loadStore, saveStore, takeProfile, PROFILE_COUNT } from "./profiles.js";
 
 const USAGE = `m68ctl — Womier M68 HE configurator (Linux)
 
@@ -46,7 +47,23 @@ usage: m68ctl <command> [args]
   sleep                    sleep time (raw)
   sensitivity [sub]        HE sensitivity (sub 4|9|10, default: all)
   layout                   custom layout support flags (raw)
+  keymap show              current keymap grid + remaps for a profile
+  keymap set KEY=TARGET ..  remap keys: e.g. keymap set PageUp=PrintScreen
+  keymap reset             clear all remaps for a profile
+  keymap upload            push a profile's keymap to the board (the
+                           app's Download sequence, wire-verified)
+  profile list             profiles 0-2 and their remaps
+  profile use <0-2>        set the current profile (default for commands)
+  profile current          print the current profile index
+  profile import <file>    merge a profile XML's <keyEvent> remaps
+  profile export <file>    write a profile's remaps as <keyEvent> XML
   session                  full demo: every verified step, printed
+
+  --profile <0-2> applies to the keymap and profile commands only
+  (0-based: CLI 0/1/2 = the app's profiles 1/2/3; default = current
+  profile, "profile use" to change). Profiles are an XML concept —
+  the board has no profile register and holds whatever keymap was
+  last uploaded (notes/12).
 `;
 
 function out(obj) {
@@ -56,6 +73,38 @@ function out(obj) {
 function fail(msg) {
   console.error(`m68ctl: ${msg}`);
   process.exit(1);
+}
+
+// --- keymap/profile helpers ---
+
+const ALIASES = {
+  prtsc: "PrintScreen", printscreen: "PrintScreen",
+  pgup: "PageUp", pageup: "PageUp", pgdn: "PageDown", pagedown: "PageDown",
+  ins: "Insert", del: "Delete", bsp: "Backspace", esc: "Esc",
+  lshift: "LeftShift", rshift: "RightShift", lctrl: "LeftCtrl",
+  lalt: "LeftAlt", ralt: "RightAlt", lwin: "LeftGui", rwin: "RightGui",
+  up: "Up", down: "Down", left: "Left", right: "Right", space: "Space",
+};
+
+/** Name/alias → HID keycode (targets); also accepts 0x-hex or decimal. */
+function parseTarget(s) {
+  const name = ALIASES[s.toLowerCase()] ?? s;
+  const kc = keymap.keycodeFromName(name);
+  if (kc !== undefined) return kc;
+  const hex = s.match(/^0x([0-9a-f]+)$/i);
+  if (hex) return parseInt(hex[1], 16);
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  return undefined;
+}
+
+/** Physical-key name/alias → matrix slot. */
+function slotFromName(s) {
+  const name = ALIASES[s.toLowerCase()] ?? s;
+  const lc = name.toLowerCase();
+  for (const [slot, kc] of keymap.PHYSICAL_KEYS) {
+    if ((keymap.KEY_NAME[kc] ?? "").toLowerCase() === lc) return slot;
+  }
+  return undefined;
 }
 
 async function withSession(fn) {
@@ -347,6 +396,155 @@ async function main() {
 
     case "layout": {
       await withSession(async (s) => out(await s.customLayoutSupport()));
+      break;
+    }
+
+    case "keymap": {
+      const store = loadStore();
+      const sub = args[0];
+      const { profile, args: rest } = takeProfile(args.slice(1), store);
+      if (sub === "show") {
+        const map = keymap.applyRemaps(keymap.stockKeymap(), store.profiles[profile].keymap);
+        const stock = keymap.stockKeymap();
+        const remaps = [];
+        for (let r = 0; r < keymap.MATRIX_ROWS; r++) {
+          const cells = [];
+          for (let c = 0; c < keymap.MATRIX_COLS; c++) {
+            const slot = r * keymap.MATRIX_COLS + c;
+            if (slot === keymap.FN_SLOT) { cells.push("Fn"); continue; }
+            const kc = map[slot * 4 + 1];
+            if (!kc) { cells.push("·"); continue; }
+            const name = keymap.KEY_NAME[kc] ?? `0x${kc.toString(16)}`;
+            if (kc !== stock[slot * 4 + 1]) {
+              cells.push(`${name}←${keymap.SLOT_NAME[slot]}`);
+              remaps.push(`${keymap.SLOT_NAME[slot]} -> ${name}`);
+            } else {
+              cells.push(name);
+            }
+          }
+          console.log(cells.join(" "));
+        }
+        out({ profile, remaps: remaps.length ? remaps : "(stock)" });
+      } else if (sub === "set") {
+        const uploadFlag = rest.includes("--upload");
+        const pairs = rest.filter((p) => p !== "--upload");
+        if (!pairs.length) fail("keymap set KEY=TARGET ... (e.g. keymap set PageUp=PrintScreen)");
+        const overrides = {};
+        for (const pair of pairs) {
+          const [k, t] = pair.split("=");
+          if (!k || !t) fail(`keymap set: bad pair "${pair}" (want KEY=TARGET)`);
+          const slot = slotFromName(k);
+          if (slot === undefined) fail(`keymap set: unknown key "${k}" (physical keys only)`);
+          const target = parseTarget(t);
+          if (target === undefined || target < 0 || target > 0xff) {
+            fail(`keymap set: unknown target "${t}"`);
+          }
+          overrides[slot] = target;
+        }
+        const changed = [];
+        for (const [slot, target] of Object.entries(overrides)) {
+          const old = store.profiles[profile].keymap[slot];
+          store.profiles[profile].keymap[slot] = target;
+          changed.push(
+            `${keymap.SLOT_NAME[slot]} -> ${keymap.KEY_NAME[target] ?? `0x${target.toString(16)}`}` +
+            (old !== undefined ? ` (was 0x${old.toString(16)})` : "")
+          );
+        }
+        saveStore(store);
+        if (uploadFlag) {
+          await withSession(async (s) => {
+            const map = keymap.applyRemaps(keymap.stockKeymap(), store.profiles[profile].keymap);
+            await s.uploadKeymap(map);
+            out({ profile, uploaded: true, changed, note: "full Download sequence (0x18+0x19+0x22)" });
+          });
+        } else {
+          out({ profile, stored: true, changed, note: "use `keymap upload` to push to the board" });
+        }
+      } else if (sub === "reset") {
+        const n = Object.keys(store.profiles[profile].keymap).length;
+        store.profiles[profile].keymap = {};
+        saveStore(store);
+        out({ profile, reset: true, cleared: n });
+      } else if (sub === "upload") {
+        const minimal = rest.includes("--minimal"); // probe P1: seg[0] only
+        await withSession(async (s) => {
+          const map = keymap.applyRemaps(keymap.stockKeymap(), store.profiles[profile].keymap);
+          if (minimal) {
+            await s.uploadKeymapMinimal(map);
+          } else {
+            await s.uploadKeymap(map);
+          }
+          const n = Object.keys(store.profiles[profile].keymap).length;
+          out({ profile, uploaded: true, remaps: n, note: minimal ? "PROBE: 0x18 seg[0] only" : "full Download sequence (0x18+0x19+0x22)" });
+        });
+      } else {
+        fail("keymap: unknown subcommand (show|set|reset|upload)");
+      }
+      break;
+    }
+
+    case "profile": {
+      const store = loadStore();
+      const sub = args[0];
+      if (sub === "list") {
+        for (let i = 0; i < PROFILE_COUNT; i++) {
+          const remaps = Object.entries(store.profiles[i].keymap).map(
+            ([slot, kc]) => `${keymap.SLOT_NAME[slot]} -> ${keymap.KEY_NAME[kc] ?? `0x${kc.toString(16)}`}`
+          );
+          console.log(`  profile ${i}${i === store.current ? " *" : ""}: remaps=${remaps.length ? remaps.join(", ") : "(none)"}`);
+        }
+        out({ current: store.current });
+      } else if (sub === "use") {
+        const n = parseInt(args[1], 10);
+        if (!Number.isInteger(n) || n < 0 || n >= PROFILE_COUNT) fail(`profile use <0-${PROFILE_COUNT - 1}>`);
+        store.current = n;
+        saveStore(store);
+        out({ current: n });
+      } else if (sub === "current") {
+        out({ current: store.current });
+      } else if (sub === "import" || sub === "export") {
+        // Profiles are an XML concept (the app's per-profile XML
+        // files). import: merge the file's <keyEvent> items
+        // (operateType 0, non-identity) into the profile's remaps.
+        // export: write the profile's remaps as an app-shaped
+        // <keyEvent> section (best-effort — the app's loader may
+        // want the full file; use the app's own XML as a template).
+        const { profile, args: rest } = takeProfile(args.slice(1), store);
+        const file = rest[0];
+        if (!file) fail(`profile ${sub} <file.xml>`);
+        const fs = await import("node:fs");
+        if (sub === "import") {
+          const xml = fs.readFileSync(file, "utf8");
+          const keyEvent = xml.match(/<keyEvent>([\s\S]*?)<\/keyEvent>/);
+          if (!keyEvent) fail(`${file}: no <keyEvent> section`);
+          const items = [...keyEvent[1].matchAll(/<item\s+[^>]*\/>/g)].map((m) => m[0]);
+          let added = 0, skipped = 0;
+          for (const it of items) {
+            const kc = it.match(/keyCode="(-?\d+)"/)?.[1];
+            const op = it.match(/operateType="(\d+)"/)?.[1];
+            const val = it.match(/Value="(-?\d+)"/)?.[1];
+            if (op !== "0" || kc === undefined || val === undefined) { skipped++; continue; }
+            const slot = keymap.PHYSICAL_KEYS.find(([, k]) => k === Number(kc))?.[0];
+            if (slot === undefined) { skipped++; continue; }
+            if (Number(val) === Number(kc)) { skipped++; continue; } // identity item = no-op
+            store.profiles[profile].keymap[slot] = Number(val);
+            added++;
+          }
+          saveStore(store);
+          out({ profile, imported: true, added, skipped, note: "remaps merged into the profile" });
+        } else {
+          const items = Object.entries(store.profiles[profile].keymap).map(([slot, kc]) => {
+            const keyCode = keymap.stockKeymap()[slot * 4 + 1];
+            const keyChar = keymap.KEY_NAME[kc] ?? `0x${kc.toString(16)}`;
+            return `<item keyCode="${keyCode}" keyChar="${keyChar}" operateType="0" repeatNum="1" mode="1" Value="${kc}"/>`;
+          });
+          const xml = `<?xml version="1.0" encoding="UTF-8" ?>\n<Parameters profileIndex="${profile + 1}">\n<config index="${profile + 1}" name="Profile${profile + 1}" proFileAppName="" proFileAppIco="">\n<keyEvent>\n${items.map((i) => "    " + i).join("\n")}\n</keyEvent>\n</config>\n</Parameters>\n`;
+          fs.writeFileSync(file, xml);
+          out({ profile, exported: true, file, items: items.length, note: "app-shaped <keyEvent> section; best-effort" });
+        }
+      } else {
+        fail("profile: unknown subcommand (list|use|current|import|export)");
+      }
       break;
     }
 

@@ -6,6 +6,7 @@
 //   close(): void
 import { buildFrame, checkResponse } from "./frame.js";
 import { CMD } from "./commands.js";
+import { stockKeymap } from "./keymap.js";
 import * as decode from "./decode.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -184,6 +185,84 @@ export class M68Session {
   async sensitivity(sub) {
     const resp = await this.cmd(CMD.HE_SENSITIVITY, [0, 0, 0, 0x18, sub], CMD.HE_SENSITIVITY);
     return decode.decodeSensitivity(resp);
+  }
+
+  /**
+   * The app's keymap Download sequence, byte-for-byte as captured
+   * (usb7/usb8.log — wire-validated, notes/11):
+   *   0x18 seg[0] = the active profile's keymap (132 entries)
+   *   0x18 seg[2] = pristine default keymap
+   *   0x19 = SeniorKey/DKS banks (10 segs × 256 B; zeros = unused)
+   *   0x22 = 40 × 50 B (2000 B; role unknown, replayed as zeros)
+   * Packet framing for all three: [2]=seg/idx, [3]=0, [4]=packet#,
+   * [5]=chunk len, [6..]=chunk. 0x18 carries 14 entries (56 B) per
+   * packet, last packet 6 entries (24 B).
+   * Pacing: 400 ms on 0x18 (the app's Sleep(400)), 100 ms on the
+   * banks (probe P1 — notes/12 — validates whether faster works).
+   * Write-only; drains any device ACKs afterwards (probe P0).
+   *
+   * @param {Buffer} customMap 528 bytes (132 × 4-byte entries) —
+   *   build with keymap.applyRemaps(stockKeymap(), overrides).
+   */
+  async uploadKeymap(customMap) {
+    if (!Buffer.isBuffer(customMap) || customMap.length !== 132 * 4) {
+      throw new Error("customMap must be 528 bytes (132 entries)");
+    }
+    const sendChunks = async (wire, seg, data, chunkSize, paceMs) => {
+      for (let off = 0, pkt = 0; off < data.length; off += chunkSize, pkt++) {
+        const chunk = data.subarray(off, Math.min(off + chunkSize, data.length));
+        const p = Buffer.alloc(62);
+        p[0] = seg; // frame[2]
+        p[1] = 0; // frame[3]
+        p[2] = pkt; // frame[4]
+        p[3] = chunk.length; // frame[5]
+        chunk.copy(p, 4); // frame[6..]
+        await this.t.write(buildFrame(wire, p));
+        await sleep(paceMs);
+      }
+    };
+    await sendChunks(CMD.ONBOARD_DATA, 0, customMap, 14 * 4, 400);
+    await sendChunks(CMD.ONBOARD_DATA, 2, stockKeymap(), 14 * 4, 400);
+    for (let seg = 0; seg < 10; seg++) {
+      await sendChunks(CMD.SENIOR_KEY, seg, Buffer.alloc(256), 58, 100);
+    }
+    for (let pkt = 0; pkt < 40; pkt++) {
+      await sendChunks(CMD.KEYMAP_AUX, pkt, Buffer.alloc(50), 50, 100);
+    }
+    await this.drain();
+  }
+
+  /** Probe P1 variant (notes/12): 0x18 seg[0] only — tests whether the
+   *  firmware commits the keymap without the pristine seg + banks. */
+  async uploadKeymapMinimal(customMap) {
+    if (!Buffer.isBuffer(customMap) || customMap.length !== 132 * 4) {
+      throw new Error("customMap must be 528 bytes (132 entries)");
+    }
+    const CHUNK = 14 * 4;
+    for (let off = 0, pkt = 0; off < customMap.length; off += CHUNK, pkt++) {
+      const chunk = customMap.subarray(off, Math.min(off + CHUNK, customMap.length));
+      const p = Buffer.alloc(62);
+      p[0] = 0; // seg
+      p[2] = pkt;
+      p[3] = chunk.length;
+      chunk.copy(p, 4);
+      await this.t.write(buildFrame(CMD.ONBOARD_DATA, p));
+      await sleep(400);
+    }
+    await this.drain();
+  }
+
+  /** Read and discard reports until one read times out (best-effort
+   *  ACK drain after uploads; whether the device ACKs 0x18 is probe
+   *  P0 — notes/12). Capped so a chatty device can't stall us. */
+  async drain(maxReads = 150) {
+    for (let i = 0; i < maxReads; i++) {
+      try {
+        await this.t.read(100);
+      } catch {
+        return;
+      }
+    }
   }
 
   close() {
