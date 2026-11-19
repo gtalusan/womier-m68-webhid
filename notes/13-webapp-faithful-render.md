@@ -106,3 +106,29 @@ never-unplug-mid-upload warning. Fn is locked (marker slot).
 `stockMap()`/`applyRemaps()` in the webapp are byte-identical to
 usb7 seg[2]/seg[0]. Swap had a read-after-write bug (both sides
 took B's action) — fixed and re-verified.
+
+## Later the same day (post-commit rounds)
+
+- **Remap is always on** — the `Remap: on` toggle chip was removed;
+  the rail lock (no keyboard) gates it instead.
+- **Profile tabs**: the rail's top-level structure is now Profile
+  1/2/3 tabs containing Effect + Parameters + Remap. Light settings
+  remember per profile; a fresh profile defaults to Static black;
+  switching tabs loads the stored light (and commits if connected).
+- **Media + Mouse tray groups** (16 + 8 targets) using the
+  wire-verified encodings (notes/14); compiled entries match the
+  hardware bytes exactly. The app-XML importer reads operateType
+  3/4 too.
+- **Export/Import** the profile store (JSON) — portability across
+  browsers, since the board's keymap has no read-back command.
+- **Upload UX**: hard-locks the whole UI (rail + caps + chips),
+  live percent, "Uploading…" state; **Reset board** pushes the stock
+  keymap AND clears the profile (board reset implies profile reset);
+  upload/reset moved to their own **Apply** panel below Remap.
+- **Disconnect is a function**: the Connect chip toggles to
+  "Disconnect keyboard" (`device.close()`), and reconnecting reuses
+  the grant via `getDevices()` — no chooser.
+- **Bug fixes**: the color well (a `<label>`) was grown to ~236px by
+  `.row label { flex: 1 }` — scoped with `.row .well`. A stale
+  WebHID session after many hard-reloads can wedge Chrome's USB
+  grant stack; restarting Chrome clears it.

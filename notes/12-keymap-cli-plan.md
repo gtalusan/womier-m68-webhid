@@ -5,6 +5,18 @@ still open. Wire spec for the keymap upload is wire-validated
 (usb7/usb8 — see notes/11 STATUS).
 
 **Implementation log (live-verified 2026-11-19):**
+- **Web app (same day):** click-to-remap with key/media/mouse target
+  tray, per-profile tabs (keymap + light, fresh profiles default to
+  Static black), export/import (JSON + the app's Profile XML),
+  upload/reset-board with progress + hard UI lock, disconnect/
+  reconnect. notes/13.
+- **All operateType encodings RE'd** (FUN_00471ce0 = compiler +
+  sender in one) — notes/14. **Media + mouse wire-verified**:
+  `Insert=Play/Pause` emits consumer 0x00CD on the board;
+  `Insert=ScrollUp/Down` scrolls and `Insert=LeftClick` clicks.
+  CLI targets: `Play/Pause`, `Mute`, `Vol+/-`, `ScrollUp`…
+
+**Implementation log (live-verified 2026-11-19):**
 - **Full Download replay WORKS on the board** — `keymap set
   PageUp=PrintScreen --profile 0 --upload` → PgUp types PrtSc, and
   it persists across replug. First CLI-driven key remap.

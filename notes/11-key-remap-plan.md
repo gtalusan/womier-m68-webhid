@@ -51,9 +51,18 @@ Still open, unrelated thread: **mode-icon UI swap** (pure frontend —
 icons in `web/assets/icons/` + `web/assets/resource-map.json`; see
 below).
 
-Implementation (web app) is now unblocked: build the XML editor +
-0x18 keymap uploader from the wire spec above; replay frames diff
-against usb7.log byte-for-byte as the acceptance test.
+Implementation — **DONE, both surfaces (2026-11-19):**
+- CLI: `keymap show|set|reset|upload`, `profile list|use|current|
+  import|export`, media/mouse targets — full Download replay
+  live-verified (PgUp→PrtSc works + persists; Insert=Play/Pause
+  emits consumer 0x00CD; Insert=ScrollUp/ScrollDown scroll for
+  real). notes/12.
+- Web app: click-to-remap UI with a key/media/mouse target tray,
+  per-profile tabs (keymap + light), export/import (JSON + the
+  app's Profile XML), upload/reset-board with progress + locking.
+  notes/13.
+- ALL operateType entry encodings RE'd from the Download compiler
+  (FUN_00471ce0): notes/14.
 
 Five parallel Ghidra passes (2026-11-17) decoded the binding system.
 All claims below are verified in M68.exe / witmodSdk.dll disassembly
@@ -148,9 +157,11 @@ Verified framing from the app's own Download path
 
 The 0x18 upload is captured firing twice (usb7 + usb8, 2026-11-19) —
 see the wire spec at the top of this file. Still open: the contents
-of 0x19/0x22 when non-empty (macros/text — no multimedia tab found
-in the UI), and whether the firmware needs seg[2] + the zero banks
-or accepts a lone seg[0] (live web-app replays will settle it).
+of 0x19/0x22 when non-empty (macro/DKS content — the bank builders
+FUN_0047c4d0/FUN_0047d380 are not decoded), combo/shortcut/disable/
+light-event entries (binary-verified in notes/14, not hardware-
+tested), and whether a keymap read-back command exists at all (the
+vendor app never reads the keymap — local XML only).
 
 ## Implementation path for the web app
 

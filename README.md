@@ -15,9 +15,16 @@ WebHID:
 - **All 15 light effects** with the vendor app's exact parameter set —
   brightness/speed (5 steps), foreground/background colors, full-color,
   and the per-mode direction buttons
-- **Live preview on the actual X82HERGB board image**, with the app's
-  dark control-panel look, calibrated per-key overlay, and a Calibrate
-  mode to fine-tune it
+- **Faithful keyboard render** — keycaps drawn from the vendor's own
+  per-key geometry (`KeyInfo_X82HERGB.config`): real widths, stagger,
+  labels, and the board's exact proportions
+- **Key remapping** — click a cap and pick a target from the tray
+  (keys, F-row, nav, mods, media, mouse) or click a second cap to
+  swap; staged per profile, upload replays the app's byte-verified
+  Download sequence
+- **Profiles as tabs** — each profile holds its own keymap *and*
+  light settings; export/import the store as JSON, or import the
+  vendor app's Profile XML
 - **Press-driven effects actually react to typing** — Reactive, Ripple,
   Cross, Fireworks, Speed Respond light up from keypresses on the page
   itself
@@ -55,6 +62,22 @@ reactive|cross|fireworks|speedrespond|custom` — each with the app's
 controls (`--brightness 0-4`, `--speed 0-4`, `--fg/--bg RRGGBB`,
 `--full-color`, `--direction` per mode) — plus `light custom-stream`
 for live XML-driven custom patterns.
+
+**Key remapping** (wire-verified upload; profiles are an XML concept,
+0-based):
+
+```
+./tools/vm-run.sh keymap set PageUp=PrintScreen Insert=Play/Pause --profile 0
+./tools/vm-run.sh keymap upload --profile 0   # the app's full Download sequence
+./tools/vm-run.sh keymap show                 # grid + remaps
+./tools/vm-run.sh keymap reset --profile 0    # clear the profile
+./tools/vm-run.sh profile list                # 3 profiles, current marked
+./tools/vm-run.sh profile import Profile2.xml # the app's own XML
+```
+
+Targets: any key name (`PageUp`, `PrtSc`…), `Play/Pause`, `Mute`,
+`Vol+/-`, `Next/Prev/Stop`, `ScrollUp/ScrollDown`, `LeftClick/
+RightClick/MiddleClick` — full operateType encodings in notes/14.
 
 **The commit** — one 64-byte frame:
 `[1]=0x07, [5]=0x0E, [6]=mode, [7]=brightness, [8]=speed, [9..11]=fg RGB,
@@ -108,6 +131,9 @@ implement the protocol directly and never load the SDK.
 - [09 — **Verified protocol (ground truth)**](notes/09-session-flow.md) ← the canonical reference
 - [10 — NEON mode: verified frame layout (Ghidra RE)](notes/10-neon-mode.md)
 - [11 — Key bindings: verified spec + plan](notes/11-key-remap-plan.md)
+- [12 — Keymap CLI: feasibility plan + implementation log](notes/12-keymap-cli-plan.md)
+- [13 — Web app: faithful render + remap UI](notes/13-webapp-faithful-render.md)
+- [14 — Keymap entry encodings: all operateTypes](notes/14-keymap-entry-encodings.md)
 
 ## Software
 

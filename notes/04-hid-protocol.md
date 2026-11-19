@@ -61,7 +61,7 @@ wire 0x40–0x49; app 0x26→0x1E, 0x27→0x1F, 0x28→0x20, 0x29→0x21,
 | 0x07 | light commit | `[5]=0x0E` + mode/brightness/speed/fg/bg/direction/full-color — the full verified layout is notes/09 |
 | 0x0F | per-key grid stream | live preview; usb6-verified framing in notes/09 |
 | 0x09 | "Write custom-Led" | 🔧 builder found (`FUN_004e8e40`, `[2]=2`, 18-slot chunks); replayed with derived framing — no visible effect, no persistence. Not used by the current app UI |
-| 0x18 | "Write Onboard-data" | 🔧 XML chunk uploader (`FUN_0047bc70`: `[2]`=item count, `[4]`=packet#, `[5]`=len, 58 B chunks, per-`<config>` packet reset). Never captured from the app for lights; replayed uploads had no visible effect. Used by the app for macro/onboard data |
+| 0x18 | "Write Onboard-data" | 🔧+✅ keymap upload: 132 fixed 4-byte entries (`00 <kc> 00 00`, Fn marker `01 00 00 00` at slot 121), 14/packet, `[2]`=segment id (0 = active profile map, 2 = pristine default), `[4]`=packet#, `[5]`=len, Sleep(400) — wire-validated (usb7/usb8, notes/11) + live-verified; all operateType entry encodings RE'd (notes/14) |
 
 ### Key remap / macros (unchanged from the app's original use)
 

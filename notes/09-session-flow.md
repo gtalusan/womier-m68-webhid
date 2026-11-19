@@ -5,6 +5,10 @@ transcripts of the real app (`~/Downloads/usb3.log`, `usb4.log`), the
 device's own responses/register mirrors, or direct observation of the
 board. Speculation is called out explicitly.
 
+(This note covers the lighting session. Key bindings/remapping live
+in notes/11 (wire-validated upload spec) and notes/14 (all operateType
+entry encodings).)
+
 ## Frame format (hard fact)
 
 - 64-byte reports: `[0]=report ID 1`, `[1]=wire command`, `[2..63]=payload`.

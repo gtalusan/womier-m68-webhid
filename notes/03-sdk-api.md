@@ -8,7 +8,7 @@
 
 | Export | RVA | Purpose |
 |---|---|---|
-| `CWitmodHid_Init` | 0x8650 | enumerate + open HID device, store handle/caps |
+| `CWitmodHid_Init` | 0x8650 | enumerate + open HID device, store handle/caps — **contains the 2030 time-bomb**: refuses to initialize once `(int)time64() ≥ 0x70DB6800` (2029-12-31 16:00 UTC = 2030-01-01 00:00 CST); the vendor app stops finding the keyboard after that. Decompiled ✅ (`ghidra-out/CWitmodHid_Init_10008650.c`, README callout) |
 | `CWitmodHid_Close` | 0x6d10 | close handle, cleanup |
 | `CWitmodHid_OpenPath` | 0x8790 | open a given device path |
 | `CWitmodHid_SetNonblocking` | 0x87b0 | overlapped/async toggle |

@@ -138,10 +138,10 @@ captures of the app (usb5/usb6 logs — checkbox flips AND a full
 profile switch) contain ZERO 0x18 "Write Onboard-data" frames, only
 0x0f preview streams. The app's persisted state is the 0x07 commit
 (mode 0x0a); the custom pattern colors live in device RAM, streamed
-while the Custom dialog is open, lost on power cycle. (The 0x18 XML
-upload builder exists in the binary — FUN_0047bc70 / FUN_00471ce0 —
-but is triggered by the main window's slot 0x1d; it was never observed
-sending light data — no lights persistence was ever seen.)
+while the Custom dialog is open, lost on power cycle. (The 0x18
+upload builder — FUN_0047bc70 / FUN_00471ce0 — turned out to be the
+**keymap/DKS Download** path, not a light path; fully decoded in
+notes/11 + notes/14 — no lights persistence was ever seen.)
 
 **Power/persistence model (live-verified 2026-11-17):**
 
