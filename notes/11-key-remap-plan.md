@@ -7,8 +7,12 @@ landed with the goal binding set. The upload is now wire-validated.
 Corrections to the RE'd framing below, proven by the capture:
 
 - **[2] is a segment id, not a running item count.** Two consecutive
-  uploads, [2]=0 then [2]=2, each with its own packet# 0..9. (Only
-  two of the expected three configs went out — see open questions.)
+  uploads, [2]=0 then [2]=2, each with its own packet# 0..9. Later
+  decode (notes/14): the two segments are the **base layer
+  (/appProfile_Default.xml, seg 0) and the FN layer
+  (/appProfile_FN.xml, seg 2)** keymaps — the "pristine default"
+  reading below was an unedited Fn layer. A dead Magnetic branch
+  (seg 1) exists in the binary.
 - **The payload is a binary keymap, not XML text.** 132 fixed 4-byte
   entries, row-major 6×22, 14 entries (56 B) per packet, last packet
   6 entries (24 B). [5] = chunk byte count, ≤58 — confirmed.
@@ -33,12 +37,13 @@ Corrections to the RE'd framing below, proven by the capture:
 active, the user set PgDn→Home + Insert→F12 and re-captured. seg[0]
 now carries profile 2's map — and profile 1's PgUp→PrtSc is **gone
 from the wire** (slot 82 back to 0x4B). seg[2] is byte-identical to
-usb7's seg[2]: a pristine default keymap. So the app's Download
-uploads exactly: **the ACTIVE profile's keymap ([2]=0) + a pristine
-default keymap ([2]=2)** — never the other profiles. The RE'd "three
-profile configs" resolves to **three upload wires in sequence**:
-0x18 (keymap, 2 segs) → 0x19 (10 segs × 256 B, all-zero) → 0x22
-(40 × 50 B = 2000 B, all-zero). Same order and sizes in both
+usb7's seg[2] — later decode shows it is the **FN layer** (an
+unedited layer, hence the "pristine" look). So the app's Download
+uploads: **the ACTIVE profile's base-layer keymap ([2]=0) + the
+active profile's FN-layer keymap ([2]=2)** — never other profiles.
+The RE'd "three profile configs" resolves to **three upload wires in
+sequence**: 0x18 (keymaps, 2 segs) → 0x19 (macro bank, 10 segs ×
+256 B) → 0x22 (DKS store, 40 × 50 B). Same order and sizes in both
 captures. Profile 2's edits on the wire: slot 104 (r4c16) 0x4E→0x4A
 (PgDn→Home), slot 38 (r1c16) 0x49→0x45 (Insert→F12).
 
