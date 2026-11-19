@@ -61,11 +61,41 @@
     position: relative; background: var(--bg-2); border: 1px solid var(--frame);
     border-radius: 12px; padding: 14px; overflow: hidden;
   }
-  .board { position: relative; user-select: none; }
-  .board img { display: block; width: 100%; max-width: 100%; filter: brightness(2.05) contrast(1.02); }
+  .board { position: relative; user-select: none; container-type: inline-size; }
   .keys { position: absolute; inset: 0; }
+  /* drawn keycaps, faithful to the app's KeyInfo render: dark caps,
+     labels top-left, additive backlight glow when lit.
+     Label metrics are in cqw (1% of the board width ≈ 7 KBD units)
+     so text scales with the caps at any window size. */
   .key {
-    position: absolute; border-radius: 10px;
+    position: absolute;
+    border-radius: 3px;
+    pointer-events: none;
+    background: linear-gradient(180deg, #23262d 0%, #16181d 100%);
+    border: 1px solid #2c3038;
+    box-shadow: inset 0 -2px 0 #0d0e11, 0 1px 0 #33373f;
+    overflow: hidden;
+  }
+  .key span {
+    position: absolute; left: 0.55cqw; top: 0.45cqw;
+    font-family: var(--font-data);
+    font-size: 1.25cqw; /* ~9 KBD units; overridden per-key when the label is long */
+    color: #6a7180; line-height: 1.05; white-space: pre;
+    pointer-events: none;
+  }
+  .krail {
+    position: absolute;
+    border-radius: 3px;
+    pointer-events: none;
+    background: linear-gradient(180deg, #1b1e24 0%, #121418 100%);
+    border: 1px solid #23262d;
+    overflow: hidden;
+  }
+  .krail span {
+    position: absolute; left: 0.55cqw; top: 0.45cqw;
+    font-family: var(--font-data);
+    font-size: 1.1cqw; /* overridden per-key when the label is long */
+    color: #4b5260; line-height: 1.05; white-space: pre;
     pointer-events: none;
   }
   /* light, not paint: an additive glow that spills around the cap… */
@@ -80,11 +110,12 @@
   /* …plus a soft color wash on the cap face (legend ghosts through) */
   .key.on::after {
     content: "";
-    position: absolute; inset: 7% 4%;
-    border-radius: 6px;
+    position: absolute; inset: 8% 4%;
+    border-radius: 4px;
     background: var(--kc-fill, transparent);
     opacity: 0.6;
   }
+  .key.on span { color: #0a0b0d; }
   .caption {
     display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px;
     font-family: var(--font-data); font-size: 0.68rem; color: var(--fg-dim);
@@ -177,7 +208,6 @@
   <div class="layout">
     <section class="stage" aria-label="Keyboard preview">
       <div class="board" id="board">
-        <img src="assets/keyboard.png" alt="Womier M68 HE keyboard" id="kbd-img">
         <div class="keys" id="keys"></div>
       </div>
       <div class="caption">
@@ -186,10 +216,6 @@
         <span>speed <b id="cap-s">3</b>/4</span>
         <span id="cap-fc"></span>
         <span style="flex:1"></span>
-        <button id="cal-btn" type="button" style="font:inherit;font-size:0.7rem;background:var(--bg-3);color:var(--fg);border:1px solid var(--frame);border-radius:6px;padding:3px 10px;cursor:pointer">Calibrate: off</button>
-      </div>
-      <div class="caption" id="cal-help" hidden>
-        <span>calibrate — 1–5 pick row · arrows nudge · +/− stretch that row's columns · Shift+arrows move all · C copies the adjusted JSON</span>
       </div>
     </section>
 
@@ -258,33 +284,120 @@ const MODES = [
   ["Fireworks", 0x10, ["brightness","speed","fg","bg","fullcolor"]],
 ];
 
-// ---- per-key geometry (measured from Keyboard_X82HERGB.png) ----
-// 67-key board: 5 physical rows = virtual rows 1..5; row 0 (F-keys) does
-// not exist on this board and is not rendered.
-const GEO = {
-  cols: 22, rows: 6, imgW: 1875, imgH: 647,
-  rowY: [0, 87, 200, 314, 425, 539],
-  colX: [
-    [130, 180, 230, 280, 330, 380, 430, 480, 530, 580, 630, 680, 730, 780, 830, 880, 930, 980, 1030, 1080, 1130, 1180],
-    [112, 233, 334, 433, 541, 639, 741, 840, 939, 1042, 1136, 1242, 1339, 1442, 1561, 1661, 1761, 1861, 1961, 2061, 2161, 2261],
-    [176, 277, 370, 462, 554, 647, 738, 832, 923, 1017, 1111, 1195, 1293, 1405, 1542, 1627, 1758, 1884, 2003, 2109, 2203, 2293],
-    [232, 300, 349, 456, 562, 668, 774, 879, 986, 1092, 1197, 1304, 1410, 1513, 1575, 1665, 1755, 1878, 1982, 2104, 2240, 2377],
-    [224, 283, 332, 436, 538, 643, 746, 850, 955, 1058, 1166, 1263, 1373, 1473, 1579, 1658, 1768, 1873, 1978, 2082, 2187, 2288],
-    [87, 169, 239, 325, 430, 536, 641, 746, 852, 958, 1060, 1167, 1275, 1379, 1532, 1643, 1775, 1869, 1960, 2053, 2145, 2237]
+// ---- true key geometry, faithful to m68.exe ----
+// Extracted from the vendor's KeyInfo_X82HERGB.config (the app's own
+// per-key layout table): real keycap x/y/width/height in the app's
+// render space, stagger and wide mods included, plus the 9-key bottom
+// function rail (the M68's onboard IME/special keys). Measured from
+// the app's window: the app draws these coords 1:1 (one config unit =
+// one logical pixel), so the space = the config's true bounds — 692×220
+// for the 5 key rows, 692×271 with the rail.
+// Each main key carries its wire-matrix slot (slot = row*22 + col,
+// rows 1..5 — the CLI's keymap layout).
+const SHOW_RAIL = false; // rail keys aren't on the physical board —
+                         // hidden until the app shows them too (data +
+                         // rendering code stay, gated here)
+const KBD = {
+  space: { w: 692, h: SHOW_RAIL ? 271 : 220 },
+  keys: [
+    {x:15,y:16,w:28,h:32,slot:22,dec:41,label:"Esc"},
+    {x:58,y:16,w:28,h:32,slot:23,dec:30,label:"1!"},
+    {x:102,y:16,w:28,h:32,slot:24,dec:31,label:"2@"},
+    {x:145,y:16,w:28,h:32,slot:25,dec:32,label:"3#"},
+    {x:189,y:16,w:28,h:32,slot:26,dec:33,label:"4$"},
+    {x:232,y:16,w:28,h:32,slot:27,dec:34,label:"5%"},
+    {x:275,y:16,w:28,h:32,slot:28,dec:35,label:"6^"},
+    {x:318,y:16,w:28,h:32,slot:29,dec:36,label:"7&"},
+    {x:363,y:16,w:28,h:32,slot:30,dec:37,label:"8*"},
+    {x:406,y:16,w:28,h:32,slot:31,dec:38,label:"9("},
+    {x:449,y:16,w:28,h:32,slot:32,dec:39,label:"0)"},
+    {x:492,y:16,w:28,h:32,slot:33,dec:45,label:"-_"},
+    {x:535,y:16,w:28,h:32,slot:34,dec:46,label:"=+"},
+    {x:579,y:16,w:71,h:32,slot:36,dec:42,label:"Back"},
+    {x:666,y:16,w:28,h:32,slot:38,dec:73,label:"Ins"},
+    {x:16,y:59,w:49,h:32,slot:44,dec:43,label:"Tab"},
+    {x:81,y:59,w:28,h:32,slot:45,dec:20,label:"Q"},
+    {x:124,y:59,w:28,h:32,slot:46,dec:26,label:"W"},
+    {x:167,y:59,w:28,h:32,slot:47,dec:8,label:"E"},
+    {x:210,y:59,w:28,h:32,slot:48,dec:21,label:"R"},
+    {x:254,y:59,w:28,h:32,slot:49,dec:23,label:"T"},
+    {x:297,y:59,w:28,h:32,slot:50,dec:28,label:"Y"},
+    {x:340,y:59,w:28,h:32,slot:51,dec:24,label:"U"},
+    {x:383,y:59,w:28,h:32,slot:52,dec:12,label:"I"},
+    {x:427,y:59,w:28,h:32,slot:53,dec:18,label:"O"},
+    {x:470,y:59,w:28,h:32,slot:54,dec:19,label:"P"},
+    {x:513,y:59,w:28,h:32,slot:55,dec:47,label:"[{"},
+    {x:556,y:59,w:28,h:32,slot:56,dec:48,label:"]}"},
+    {x:599,y:59,w:49,h:32,slot:58,dec:49,label:"\"|"},
+    {x:664,y:59,w:28,h:32,slot:60,dec:76,label:"Del"},
+    {x:16,y:102,w:61,h:32,slot:66,dec:57,label:"CapsLk"},
+    {x:92,y:102,w:28,h:32,slot:68,dec:4,label:"A"},
+    {x:135,y:102,w:28,h:32,slot:69,dec:22,label:"S"},
+    {x:178,y:102,w:28,h:32,slot:70,dec:7,label:"D"},
+    {x:221,y:102,w:28,h:32,slot:71,dec:9,label:"F"},
+    {x:265,y:102,w:28,h:32,slot:72,dec:10,label:"G"},
+    {x:308,y:102,w:28,h:32,slot:73,dec:11,label:"H"},
+    {x:351,y:102,w:28,h:32,slot:74,dec:13,label:"J"},
+    {x:394,y:102,w:28,h:32,slot:75,dec:14,label:"K"},
+    {x:437,y:102,w:28,h:32,slot:76,dec:15,label:"L"},
+    {x:480,y:102,w:28,h:32,slot:77,dec:51,label:"; :"},
+    {x:523,y:102,w:28,h:32,slot:78,dec:52,label:"\""},
+    {x:566,y:102,w:82,h:32,slot:80,dec:40,label:"Enter"},
+    {x:664,y:102,w:28,h:32,slot:82,dec:75,label:"PgUp"},
+    {x:16,y:145,w:83,h:32,slot:88,dec:225,label:"L_Shift"},
+    {x:113,y:145,w:28,h:32,slot:90,dec:29,label:"Z"},
+    {x:156,y:145,w:28,h:32,slot:91,dec:27,label:"X"},
+    {x:199,y:145,w:28,h:32,slot:92,dec:6,label:"C"},
+    {x:243,y:145,w:28,h:32,slot:93,dec:25,label:"V"},
+    {x:286,y:145,w:28,h:32,slot:94,dec:5,label:"B"},
+    {x:329,y:145,w:28,h:32,slot:95,dec:17,label:"N"},
+    {x:372,y:145,w:28,h:32,slot:96,dec:16,label:"M"},
+    {x:415,y:145,w:28,h:32,slot:97,dec:54,label:",<"},
+    {x:458,y:145,w:28,h:32,slot:98,dec:55,label:".>"},
+    {x:502,y:145,w:28,h:32,slot:99,dec:56,label:"/?"},
+    {x:545,y:145,w:63,h:32,slot:101,dec:229,label:"R_Shift"},
+    {x:621,y:145,w:28,h:32,slot:103,dec:82,label:"Up"},
+    {x:664,y:145,w:28,h:32,slot:104,dec:78,label:"PgDn"},
+    {x:16,y:188,w:38,h:32,slot:110,dec:224,label:"L_Ctrl"},
+    {x:70,y:188,w:38,h:32,slot:111,dec:227,label:"L_Win"},
+    {x:125,y:188,w:37,h:32,slot:112,dec:226,label:"L_Alt"},
+    {x:177,y:188,w:258,h:32,slot:116,dec:44,label:"Space"},
+    {x:449,y:188,w:36,h:32,slot:119,dec:230,label:"R_Alt"},
+    {x:503,y:188,w:36,h:32,slot:121,dec:-10,label:"Fn"},
+    {x:577,y:188,w:28,h:32,slot:124,dec:80,label:"Left"},
+    {x:621,y:188,w:28,h:32,slot:125,dec:81,label:"Down"},
+    {x:664,y:188,w:28,h:32,slot:126,dec:79,label:"Right"},
   ],
-  cellW: 58, cellH: 54,
+  rail: [
+    {x:16,y:238,w:40,h:33,dec:137,label:"|￥-"},
+    {x:60,y:238,w:40,h:33,dec:50,label:">/<"},
+    {x:104,y:238,w:40,h:33,dec:100,label:"《》"},
+    {x:148,y:238,w:40,h:33,dec:135,label:"-\"ろ"},
+    {x:192,y:238,w:40,h:33,dec:139,label:"無変換"},
+    {x:236,y:238,w:40,h:33,dec:145,label:"汉字"},
+    {x:280,y:238,w:40,h:33,dec:144,label:"韩/英"},
+    {x:324,y:238,w:40,h:33,dec:138,label:"変換"},
+    {x:368,y:238,w:30,h:33,dec:136,label:"カタカナ/ひらかな"},
+  ],
 };
+// physical center of a key in KBD space, by matrix (r, c) — for the
+// pixel-space effects (Radar/Ripple). null for empty slots.
+const KEYCENTER = new Map();
+for (const k of KBD.keys) KEYCENTER.set(k.slot, { x: k.x + k.w / 2, y: k.y + k.h / 2 });
+function centerOf(r, c) { return KEYCENTER.get(r * 22 + c) ?? null; }
 // ---- key sets from the app's profile XML (Profile2) ----
 const ALPHABET = [[2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[2,7],[2,8],[2,9],[2,10],[2,11],[2,12],[2,14],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[3,8],[3,9],[3,10],[3,11],[3,12],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11]];
 const WASD = [[2,2],[3,2],[3,3],[3,4],[4,15],[5,14],[5,15],[5,16]];
-const ARROWS = [[4,16],[5,15],[5,16],[5,17]]; // vendor matrix: Up r4c16, Left r5c15, Down r5c16, Right r5c17
-// virtual key map (from the app's XML coordinates) + press engine
+const ARROWS = [[4,15],[5,14],[5,15],[5,16]]; // matrix coords: Up r4c15, Left r5c14, Down r5c15, Right r5c16
+// qwertyuiop[]\ → row 2; asdfghjkl;' → row 3; zxcvbnm,./ → row 4.
+// (r, c) = matrix coords: r 1..5, c 0..21, slot = r*22 + c.
 const KEYMAP = {};
-"qwertyuiop[]\\".split("").forEach((ch, i) => { KEYMAP[ch] = [2, i + 1]; });
+"qwertyuiop[]".split("").forEach((ch, i) => { KEYMAP[ch] = [2, i + 1]; });
+KEYMAP["\\"] = [2, 14];
 "asdfghjkl;'".split("").forEach((ch, i) => { KEYMAP[ch] = [3, i + 2]; });
 "zxcvbnm,./".split("").forEach((ch, i) => { KEYMAP[ch] = [4, i + 2]; });
-KEYMAP["ArrowUp"] = [4, 16]; KEYMAP["ArrowLeft"] = [5, 15];
-KEYMAP["ArrowDown"] = [5, 16]; KEYMAP["ArrowRight"] = [5, 17];
+KEYMAP["ArrowUp"] = [4, 15]; KEYMAP["ArrowLeft"] = [5, 14];
+KEYMAP["ArrowDown"] = [5, 15]; KEYMAP["ArrowRight"] = [5, 16];
 const presses = []; // {r, c, t}
 let lastPressT = 0;
 window.addEventListener("keydown", (e) => {
@@ -303,10 +416,11 @@ function livePresses(maxAgeMs) {
 }
 
 // ---- state ----
-// demo defaults while no keyboard is attached (the page is a preview);
-// on connect the state goes off until the register readback lands —
-// if it never does, everything stays off (user requirement)
-const S = { mode: "Static", b: 4, s: 3, fg: "#ff0000", bg: "#000000", fc: false, dir: 0 };
+// No keyboard attached = the board starts OFF (brightness 0), like the
+// device with no state — no jarring default colors. On connect the
+// state goes off until the register readback lands — if it never does,
+// everything stays off (user requirement).
+const S = { mode: "Static", b: 0, s: 3, fg: "#ff0000", bg: "#000000", fc: false, dir: 0 };
 // verified direction maps (notes/10); defaults = the app's stored defaults
 const DIRECTION_OPTS = {
   Wave: { left: 1, right: 0, up: 2, down: 3, inward: 5, outward: 4 },
@@ -331,35 +445,58 @@ function buildDirRow() {
     box.appendChild(b);
   }
 }
-let keys = [];       // DOM cells
+let keys = [];       // DOM keycaps, keyed by slot
+let keyEl = new Map(); // slot -> element
 let raf = 0;
 
 const $ = (id) => document.getElementById(id);
 
 function buildKeys() {
   const box = $("keys");
-  const { cols, rows, rowY, colX, cellW, cellH } = GEO;
-  keys = [];
-  for (let r = 1; r < rows; r++) { // row 0 = F-keys, absent on this 67-key board
-    for (let c = 0; c < cols; c++) {
-      const el = document.createElement("div");
-      el.className = "key";
-      el.style.left = (colX[r][c] - cellW / 2) / GEO.imgW * 100 + "%";
-      el.style.top = (rowY[r] - cellH / 2) / GEO.imgH * 100 + "%";
-      el.style.width = cellW / GEO.imgW * 100 + "%";
-      el.style.height = cellH / GEO.imgH * 100 + "%";
-      box.appendChild(el);
-      keys.push(el);
-    }
+  const { w, h } = KBD.space;
+  $("board").style.aspectRatio = `${w} / ${h}`; // the app's true bounds
+  // base = the cap's default legend size in cqw (1cqw = 7 KBD units);
+  // long labels auto-shrink to stay inside the cap, like the app.
+  const mk = (k, base) => {
+    const el = document.createElement("div");
+    el.style.left = k.x / w * 100 + "%";
+    el.style.top = k.y / h * 100 + "%";
+    el.style.width = k.w / w * 100 + "%";
+    el.style.height = k.h / h * 100 + "%";
+    const span = document.createElement("span");
+    span.textContent = k.label;
+    const fit = (k.w - 5) * 0.16 / Math.max(1, k.label.length);
+    span.style.fontSize = Math.min(base, fit) + "cqw";
+    el.appendChild(span);
+    box.appendChild(el);
+    return el;
+  };
+  for (const k of KBD.keys) {
+    const el = mk(k, 1.25);
+    el.className = "key";
+    el.dataset.slot = k.slot;
+    keyEl.set(k.slot, el);
+    keys.push(el);
+  }
+  for (const k of KBD.rail) {
+    if (!SHOW_RAIL) continue; // suppressed: not on the physical board
+    const el = mk(k, 1.1);
+    el.className = "krail";
+    el.title = "special key 0x" + k.dec.toString(16);
   }
 }
-const keyAt = (r, c) => keys[(r - 1) * GEO.cols + c]; // rows stored 1..5
 function setKey(r, c, color, on) {
-  const el = keyAt(r, c);
+  const el = keyEl.get(r * 22 + c); // empty slots have no keycap — no-op
   if (!el) return;
   // parse the color; anything near-black = no light (off), like the device
-  const m = (color || "").match(/rgb\((\d+), (\d+), (\d+)\)/) || [];
-  const lum = m.length ? (parseInt(m[1]) + parseInt(m[2]) + parseInt(m[3])) / 3 : 255;
+  const colorOf = (color || "").toString();
+  let m = colorOf.match(/rgb\((\d+), (\d+), (\d+)\)/);
+  let lum;
+  if (m) lum = (parseInt(m[1]) + parseInt(m[2]) + parseInt(m[3])) / 3;
+  else {
+    m = colorOf.match(/^#([0-9a-f]{6})$/i);
+    lum = m ? ((parseInt(m[1].slice(0, 2), 16) + parseInt(m[1].slice(2, 4), 16) + parseInt(m[1].slice(4, 6), 16)) / 3) : 255;
+  }
   const off = !on || lum < 20;
   el.classList.toggle("on", !off);
   el.style.setProperty("--kc", color || "#ffffff");
@@ -474,13 +611,15 @@ function drawRadar(t) {
   for (let r = 1; r <= 5; r++) for (let c = 0; c <= 16; c++) setKey(r, c, S.fc ? "#000000" : S.fg, true);
   const rev = S.dir === 7 ? -1 : 1;
   const ang = (rev * t / (1200 - S.s * 180)) * Math.PI * 2;
-  const cx = (GEO.colX[2][0] + GEO.colX[2][16]) / 2;
-  const cy = (GEO.rowY[1] + GEO.rowY[5]) / 2;
-  const R = (GEO.colX[2][16] - GEO.colX[2][0]) / 2; // sweep radius = half the board width
+  const cx = KBD.space.w / 2;
+  const cy = (16 + 188 + 32) / 2; // vertical center of the 5 key rows
+  const R = KBD.space.w / 2 - 30; // sweep radius = half the board width
   for (let r = 1; r <= 5; r++) {
     for (let c = 0; c <= 16; c++) {
-      const dx = GEO.colX[r][c] - cx;
-      const dy = GEO.rowY[r] - cy;
+      const p = centerOf(r, c);
+      if (!p) continue;
+      const dx = p.x - cx;
+      const dy = p.y - cy;
       const a = Math.atan2(dy, dx);
       const d = Math.hypot(dx, dy);
       const diff = Math.abs(((a - ang) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2));
@@ -525,11 +664,14 @@ function drawRipple() {
   for (let r = 1; r <= 5; r++) for (let c = 0; c <= 16; c++) setKey(r, c, S.fc ? "#000000" : S.bg, true);
   for (const p of livePresses(1100)) {
     const age = (now - p.t) / 1100;
-    const rad = (10 + age * 520) / 1; // pixels: starts small, floods outward
-    const pxc = GEO.colX[p.r][p.c], pyc = GEO.rowY[p.r];
+    const rad = 10 + age * 520; // KBD-space units: starts small, floods outward
+    const p0 = centerOf(p.r, p.c);
+    if (!p0) continue;
     for (let rr = 1; rr <= 5; rr++) {
       for (let cc = 0; cc <= 16; cc++) {
-        const d = Math.hypot(GEO.colX[rr][cc] - pxc, GEO.rowY[rr] - pyc);
+        const q = centerOf(rr, cc);
+        if (!q) continue;
+        const d = Math.hypot(q.x - p0.x, q.y - p0.y);
         if (d < rad) {
           const edge = Math.min(1, (rad - d) / 45); // soft outer edge
           setKey(rr, cc, S.fc ? hue((now / 6) % 360) : lerpBgFg(Math.max(edge, 0.25)), true);
@@ -695,8 +837,10 @@ function sync() {
   $("cap-s").textContent = S.s;
   $("cap-fc").textContent = S.fc ? "· full color" : "";
   const PRESS_MODES = new Set(["Reactive", "Ripple", "Aurora", "Cross", "Fireworks", "Speed Respond", "Striation", "Auto Ripple"]);
-  $("cap-hint").textContent =
-    "· " + (PRESS_MODES.has(S.mode) ? "press keys" : "demo");
+  const hint = !dev && S.b === 0
+    ? "off — connect a keyboard to preview"
+    : PRESS_MODES.has(S.mode) ? "press keys" : "demo";
+  $("cap-hint").textContent = "· " + hint;
   document.querySelectorAll(".mode").forEach((b) => {
     b.classList.toggle("sel", b.dataset.name === S.mode);
   });
@@ -716,12 +860,12 @@ function sync() {
 
 buildKeys();
 buildModes();
+let dev = null, outReport = null; // declared before boot sync(): the hint reads `dev`
 sync();
 requestAnimationFrame(loop);
 
 // ---- WebHID transport (verified protocol: notes/10) ----
 const HID_VID = 0x0416, HID_PID = 0x7372;
-let dev = null, outReport = null;
 let sendQueue = Promise.resolve();
 const DIRECTION_DEFAULT = { Static: 0, Breath: 0, Wave: 0, Neon: 0, Twinkle: 0, Radar: 6, Reactive: 0, Aurora: 4, Ripple: 4, Custom: 0, Cross: 0, "Speed Respond": 2, "Auto Ripple": 4, Striation: 6, Fireworks: 4 };
 
@@ -860,57 +1004,4 @@ sync = function () {
   _sync0();
   if (dev) commitCurrent();
 };
-
-// ---- calibration nudge ----
-let CAL = false, CALROW = 2;
-const calBtn = $("cal-btn"), calHelp = $("cal-help");
-function saveCal() {
-  try { localStorage.setItem("m68cal", JSON.stringify({ rowY: GEO.rowY, colX: GEO.colX })); } catch {}
-}
-try {
-  const saved = JSON.parse(localStorage.getItem("m68cal"));
-  if (saved && saved.rowY && saved.colX) { GEO.rowY = saved.rowY; GEO.colX = saved.colX; }
-} catch {}
-function relayout() {
-  for (let r = 1; r < GEO.rows; r++)
-    for (let c = 0; c < GEO.cols; c++) {
-      const el = keys[(r - 1) * GEO.cols + c];
-      el.style.left = (GEO.colX[r][c] - GEO.cellW / 2) / GEO.imgW * 100 + "%";
-      el.style.top = (GEO.rowY[r] - GEO.cellH / 2) / GEO.imgH * 100 + "%";
-    }
-}
-calBtn.addEventListener("click", () => {
-  CAL = !CAL;
-  calBtn.textContent = "Calibrate: " + (CAL ? "on" : "off");
-  calHelp.hidden = !CAL;
-});
-window.addEventListener("keydown", (e) => {
-  if (!CAL) return;
-  const all = e.shiftKey;
-  if (e.key >= "1" && e.key <= "5") { CALROW = +e.key; e.preventDefault(); return; }
-  let dx = 0, dy = 0;
-  if (e.key === "ArrowLeft") dx = -1;
-  else if (e.key === "ArrowRight") dx = 1;
-  else if (e.key === "ArrowUp") dy = -1;
-  else if (e.key === "ArrowDown") dy = 1;
-  else if (e.key === "+" || e.key === "=") {
-    // stretch the selected row's columns outward around the row center
-    const mid = (GEO.colX[CALROW][0] + GEO.colX[CALROW][GEO.cols - 1]) / 2;
-    GEO.colX[CALROW] = GEO.colX[CALROW].map((x) => Math.round(mid + (x - mid) * 1.02));
-    relayout(); saveCal(); e.preventDefault(); return;
-  } else if (e.key === "-" || e.key === "_") {
-    const mid = (GEO.colX[CALROW][0] + GEO.colX[CALROW][GEO.cols - 1]) / 2;
-    GEO.colX[CALROW] = GEO.colX[CALROW].map((x) => Math.round(mid + (x - mid) / 1.02));
-    relayout(); saveCal(); e.preventDefault(); return;
-  } else if (e.key === "c") {
-    navigator.clipboard.writeText(JSON.stringify({ rowY: GEO.rowY, colX: GEO.colX })).catch(() => {});
-    e.preventDefault();
-    return;
-  } else return;
-  e.preventDefault();
-  if (all) { GEO.rowY = GEO.rowY.map((y) => y + dy); GEO.colX = GEO.colX.map((row) => row.map((x) => x + dx)); }
-  else { GEO.rowY[CALROW] += dy; GEO.colX[CALROW] = GEO.colX[CALROW].map((x) => x + dx); }
-  relayout();
-  saveCal();
-});
 </script>
