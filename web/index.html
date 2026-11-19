@@ -222,7 +222,9 @@
   }
   .step.on { background: var(--accent); border-color: var(--accent); }
   .swatches { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; flex: 1; }
-  .well { position: relative; width: 34px; height: 34px; border-radius: 9px; border: 2px solid var(--frame); cursor: pointer; flex: none; }
+  /* the color well is a <label> — beat .row label's flex:1 so it stays
+     a 34px square instead of growing across the whole row */
+  .row .well { flex: none; width: 34px; height: 34px; border-radius: 9px; border: 2px solid var(--frame); cursor: pointer; position: relative; }
   .well::after { content: "▾"; position: absolute; right: 2px; bottom: 0; font-size: 0.6rem; color: var(--fg); text-shadow: 0 0 3px #000; }
   .well input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .swatch { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--frame); cursor: pointer; padding: 0; flex: none; }
@@ -507,6 +509,19 @@ const REMAP_TRAY = [
   ["nav", [0x46,0x47,0x48,0x49,0x4a,0x4b,0x4c,0x4d,0x4e,0x4f,0x50,0x51,0x52]],
   ["mods", [0xe0,0xe1,0xe2,0xe3,0xe5,0xe6]],
 ];
+// media + mouse targets (notes/14, wire-verified): targets are
+// "media:N" / "mouse:N" strings; the entry bytes come from the tables.
+const MEDIA_NAMES = {0:"Vol+",1:"Vol-",2:"Mute",3:"Play/Pause",4:"Next",5:"Prev",6:"Stop",7:"Media7",8:"Player",9:"Calc",10:"Computer",11:"Browser",12:"Email",13:"Brt+",14:"Brt-",15:"Search"};
+const MEDIA_WIRE = {0:0x10,1:0x11,2:0x12,3:0x13,4:0x14,5:0x15,6:0x16,7:0x17,8:0x30,9:0x32,10:0x34,11:0x23,12:0x20,13:0x38,14:0x39,15:0x21};
+const MOUSE_NAMES = {0:"LeftClick",1:"MiddleClick",2:"RightClick",3:"ScrollUp",4:"ScrollDown",5:"Forward",6:"Backward",7:"Sniper"};
+const MOUSE_BTN = {0:0x01,1:0x04,2:0x02,3:0x01,4:0xff,5:0x10,6:0x08,7:0x00};
+function targetLabel(t) {
+  if (typeof t === "string") {
+    if (t.startsWith("media:")) return MEDIA_NAMES[Number(t.slice(6))] ?? t;
+    if (t.startsWith("mouse:")) return MOUSE_NAMES[Number(t.slice(6))] ?? t;
+  }
+  return REMAP_NAMES[t] ?? `0x${t.toString(16)}`;
+}
 function stockMap() {
   const buf = new Uint8Array(132 * 4);
   for (const k of KBD.keys) {
@@ -517,11 +532,27 @@ function stockMap() {
 }
 function applyRemaps(base, overrides) {
   const map = new Uint8Array(base);
-  for (const [slotStr, kc] of Object.entries(overrides)) {
+  for (const [slotStr, target] of Object.entries(overrides)) {
     const slot = Number(slotStr);
-    if (slot === FN_SLOT || !Number.isInteger(kc) || kc < 0 || kc > 0xff) continue;
+    if (slot === FN_SLOT) continue;
     map.fill(0, slot * 4, slot * 4 + 4);
-    map[slot * 4 + 1] = kc;
+    if (typeof target === "string") {
+      if (target.startsWith("media:")) {
+        const id = Number(target.slice(6));
+        if (!(id in MEDIA_WIRE)) continue;
+        map[slot * 4] = 0x07;
+        map[slot * 4 + 1] = MEDIA_WIRE[id];
+      } else if (target.startsWith("mouse:")) {
+        const id = Number(target.slice(6));
+        if (!(id in MOUSE_NAMES)) continue;
+        map[slot * 4] = 0x12;
+        map[slot * 4 + 1] = (id === 3 || id === 4) ? 1 : 0;
+        map[slot * 4 + 2] = MOUSE_BTN[id];
+      }
+      continue;
+    }
+    if (!Number.isInteger(target) || target < 0 || target > 0xff) continue;
+    map[slot * 4 + 1] = target;
   }
   return map;
 }
@@ -1139,9 +1170,12 @@ async function profileImport(file) {
         const kc = m[0].match(/keyCode="(-?\d+)"/)?.[1];
         const op = m[0].match(/operateType="(\d+)"/)?.[1];
         const val = m[0].match(/Value="(-?\d+)"/)?.[1];
-        if (op !== "0" || kc === undefined || val === undefined || Number(val) === Number(kc)) continue;
+        if (kc === undefined || val === undefined) continue;
         const k = KBD.keys.find((x) => x.dec === Number(kc));
-        if (k && k.slot !== FN_SLOT) over[k.slot] = Number(val);
+        if (!k || k.slot === FN_SLOT) continue;
+        if (op === "0" && Number(val) !== Number(kc)) over[k.slot] = Number(val);
+        else if (op === "3") over[k.slot] = "media:" + Number(val);        // media id
+        else if (op === "4") over[k.slot] = "mouse:" + Number(val);        // mouse id
       }
       store = rmLoad();
       store.profiles[store.current].keymap = { ...store.profiles[store.current].keymap, ...over };
@@ -1172,7 +1206,7 @@ function remapRefresh() {
     if (!el) continue;
     const span = el.querySelector("span");
     const o = over[k.slot];
-    span.textContent = o !== undefined ? (REMAP_NAMES[o] ?? "0x" + o.toString(16)) : k.label;
+    span.textContent = o !== undefined ? targetLabel(o) : k.label;
     el.classList.remove("staged", "uploaded", "sel-source", "noremap");
     if (k.slot === FN_SLOT) el.classList.add("noremap");
     if (o !== undefined) el.classList.add(RM.uploaded[k.slot] === o ? "uploaded" : "staged");
@@ -1204,6 +1238,28 @@ function remapRefresh() {
       tray.appendChild(g);
       tray.appendChild(t);
     }
+    // media + mouse (wire-verified encodings, notes/14)
+    const extra = [
+      ["Media", Object.keys(MEDIA_NAMES).map((id) => ["media:" + id, MEDIA_NAMES[id]])],
+      ["Mouse", Object.keys(MOUSE_NAMES).map((id) => ["mouse:" + id, MOUSE_NAMES[id]])],
+    ];
+    for (const [grp, items] of extra) {
+      const g = document.createElement("div");
+      g.className = "grp";
+      g.textContent = grp;
+      const t = document.createElement("div");
+      t.className = "targets";
+      for (const [target, label] of items) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "target";
+        b.textContent = label;
+        b.onclick = () => assignRemap(sel.slot, target);
+        t.appendChild(b);
+      }
+      tray.appendChild(g);
+      tray.appendChild(t);
+    }
     const reset = document.createElement("button");
     reset.type = "button";
     reset.className = "target";
@@ -1225,7 +1281,7 @@ function remapRefresh() {
     x.textContent = "×";
     x.onclick = () => clearRemap(Number(slotStr));
     const b = document.createElement("b");
-    b.textContent = `${src?.label ?? slotStr} → ${REMAP_NAMES[kc] ?? "0x" + kc.toString(16)}`;
+    b.textContent = `${src?.label ?? slotStr} → ${targetLabel(kc)}`;
     e.append(x, b);
     staged.appendChild(e);
   }
