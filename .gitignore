@@ -20,3 +20,7 @@ node_modules/
 # local-only scripts/secrets
 tools/vm_key
 tools/vm_key.pub
+
+# python
+__pycache__/
+*.pyc

@@ -1,30 +1,59 @@
 # 11 — Key bindings / remapping: verified spec (RE'd from the binaries)
 
-## STATUS (2026-11-18) — where the next session picks up
+## STATUS (2026-11-19) — 0x18 wire-validated (usb7.log)
 
-RE phase COMPLETE (five parallel Ghidra agents + one resource-parser
-agent). Everything below the "Implementation path" heading is
-binary-verified. Two threads are ready to start:
+The Download-button capture (usb7.log, same WinDbg method as usb3–6)
+landed with the goal binding set. The upload is now wire-validated.
+Corrections to the RE'd framing below, proven by the capture:
 
-1. **Key-bindings capture (one step, user-assisted).** Have the user,
-   in the Win11 VM, click the app's custom-keys **Download** button
-   while capturing WinDbg (usb7.log, same method as usb3–usb6). That
-   produces the first-ever real 0x18 upload frames → diff against the
-   framing below → then implement the web Remap tab with confidence.
-   Without the capture, the framing below is binary-verified but
-   never wire-validated for key data (two earlier replays with a
-   wrong `[2]` assumption had no effect).
-2. **Mode-icon UI swap (pure frontend, no device).** All 338 named
-   resources are extracted to `web/assets/icons/` (map in
-   `web/assets/resource-map.json`). Every mode has Def/Sel PNG pairs
-   under `icons/images/deviceLed/keyboard/` (note: Snake is spelled
-   `SnackDef.png` in the vendor's own resources). Swap the page's
-   text `.mode` buttons for the app's QToolButton-style icon buttons
-   (Def = unchecked, Sel = checked). Also available: checkboxes
-   (`publicIco/checkBoxDef/Sel.png`), the full-color toggle, arrows.
+- **[2] is a segment id, not a running item count.** Two consecutive
+  uploads, [2]=0 then [2]=2, each with its own packet# 0..9. (Only
+  two of the expected three configs went out — see open questions.)
+- **The payload is a binary keymap, not XML text.** 132 fixed 4-byte
+  entries, row-major 6×22, 14 entries (56 B) per packet, last packet
+  6 entries (24 B). [5] = chunk byte count, ≤58 — confirmed.
+- **Entry = `00 <keyCode> 00 00`** (uint32 LE = keyCode<<8), keyCode
+  = USB HID usage id, 0 = empty slot. One exception: slot 121 (r5c11)
+  = `01 00 00 00` — the Fn marker (preserve verbatim when uploading).
+- Row 0 (slots 0..21) is all-zero padding; rows 1..5 are the five
+  physical rows (68 keys). The matrix coords below are 1-indexed
+  columns — arrows Up r4c16 / Left r5c15 / Down r5c16 / Right r5c17
+  confirmed on the wire.
+- **PgUp = 0x4B = 75**, PrtSc = 0x46 = 70. (The old example's
+  "keyCode=74" was a slip — 74 is Home. The XML Value="70" ✓.)
+- **The goal binding on the wire:** the two captured uploads differ
+  in exactly ONE slot — entry 82 (r3c16): seg0 = 0x46 (PrtSc), seg2
+  = 0x4B (PgUp default). A remap = replace the slot's keyCode with
+  the target's; the app always uploads the full 132-entry map.
+- **After the keymap**, the app uploads two all-zero banks: 0x19
+  (10 segments × 256 B) and 0x22 (40 × 50 B = 2000 B). Purpose
+  uncharacterized (macro/text/aux data) — all zeros with no bindings.
 
-Goal binding for the user: **PgUp (0x4B/74) → Print Screen
-(0x46/70)** = the XML item below + the 0x18 upload.
+**Second capture (usb8.log, 2026-11-19) resolves [2]:** with profile 2
+active, the user set PgDn→Home + Insert→F12 and re-captured. seg[0]
+now carries profile 2's map — and profile 1's PgUp→PrtSc is **gone
+from the wire** (slot 82 back to 0x4B). seg[2] is byte-identical to
+usb7's seg[2]: a pristine default keymap. So the app's Download
+uploads exactly: **the ACTIVE profile's keymap ([2]=0) + a pristine
+default keymap ([2]=2)** — never the other profiles. The RE'd "three
+profile configs" resolves to **three upload wires in sequence**:
+0x18 (keymap, 2 segs) → 0x19 (10 segs × 256 B, all-zero) → 0x22
+(40 × 50 B = 2000 B, all-zero). Same order and sizes in both
+captures. Profile 2's edits on the wire: slot 104 (r4c16) 0x4E→0x4A
+(PgDn→Home), slot 38 (r1c16) 0x49→0x45 (Insert→F12).
+
+Still open: what 0x19/0x22 carry when non-empty (macros/text — no
+multimedia tab found in the UI), and whether the firmware requires
+seg[2] + the zero banks or a lone seg[0] suffices (live replays from
+the web app will settle the latter).
+
+Still open, unrelated thread: **mode-icon UI swap** (pure frontend —
+icons in `web/assets/icons/` + `web/assets/resource-map.json`; see
+below).
+
+Implementation (web app) is now unblocked: build the XML editor +
+0x18 keymap uploader from the wire spec above; replay frames diff
+against usb7.log byte-for-byte as the acceptance test.
 
 Five parallel Ghidra passes (2026-11-17) decoded the binding system.
 All claims below are verified in M68.exe / witmodSdk.dll disassembly
@@ -107,20 +136,21 @@ Verified framing from the app's own Download path
 (`DCustomKeysPage` Download button → `sigTheKeyboardIntoDownloading`
 → `DDevicePage` slot 0x1d → `FUN_00471ce0`):
 
-- 64-byte frames: `[0]=1, [1]=0x18 (wire), [2]=running item count,
-  [3]=0, [4]=packet#, [5]=item byte count (≤58), [6..]=chunk`.
-- 14 items per packet, `Sleep(400)` between packets, all three profile
-  configs uploaded in sequence, packet# resets per `<config>`.
-- Note: `[2]` was re-derived from the caller disassembly (the pushes at
-  the two call sites carry the item counter and the packet counter);
-  a "profile/segment id" reading was considered and rejected.
+- 64-byte frames: `[0]=1, [1]=0x18 (wire), [2]=segment id,
+  [3]=0, [4]=packet#, [5]=chunk byte count (≤58), [6..]=chunk`.
+- 14 entries per packet (56 B), `Sleep(400)` between packets, configs
+  uploaded in sequence, packet# resets per segment.
+- Note: `[2]` is a **segment id** — usb7.log shows two back-to-back
+  uploads with [2]=0 and [2]=2, each with packet# 0..9. (The old
+  "running item count" reading is dead; see the wire spec at top.)
 
-## What remains unverified (one capture closes it)
+## What remains unverified
 
-The 0x18 upload has never been captured firing (all five WinDbg
-captures to date contain only light traffic). One capture of the
-app's **Download button click** (usb7.log) gives the exact frames for
-a known XML — the final validation for the web implementation.
+The 0x18 upload is captured firing twice (usb7 + usb8, 2026-11-19) —
+see the wire spec at the top of this file. Still open: the contents
+of 0x19/0x22 when non-empty (macros/text — no multimedia tab found
+in the UI), and whether the firmware needs seg[2] + the zero banks
+or accepts a lone seg[0] (live web-app replays will settle it).
 
 ## Implementation path for the web app
 
@@ -132,7 +162,8 @@ a known XML — the final validation for the web implementation.
 ## Example goal — PgUp → Print Screen
 
 ```xml
-<item keyCode="74" keyChar="PrtSc" operateType="0" repeatNum="1" mode="1" Value="70"/>
+<item keyCode="75" keyChar="PrtSc" operateType="0" repeatNum="1" mode="1" Value="70"/>
 ```
 
-(PgUp = 0x4B = 74; PrtSc = 0x46 = 70 — both from the label map.)
+(PgUp = 0x4B = **75**, PrtSc = 0x46 = 70 — wire-verified in usb7.log;
+the old "74" was Home.)
