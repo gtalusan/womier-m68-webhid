@@ -72,6 +72,29 @@ device renders 0x03 as Neon).
   `m68ctl` over hidraw.
 - **Windows**: web app (Chrome/Edge) or the vendor app.
 
+## ⏰ The SDK's 2030 time-bomb
+
+The vendor SDK refuses to initialize once the system clock passes
+**2030-01-01 00:00 CST** (2029-12-31 16:00 UTC) — after that, the
+vendor's Windows app stops seeing the keyboard. `CWitmodHid_Init`
+(witmodSdk.dll) gates its device enumeration on the system time.
+Ghidra-verified (`ghidra-out/CWitmodHid_Init_10008650.c`):
+
+```c
+local_1c = _time64(0);
+_Var2 = _time64(&local_1c);
+if ((int)_Var2 < 0x70db6800) {   /* 0x70DB6800 = 2029-12-31 16:00:00 UTC */
+  DAT_100442b0 = 1;              /* enabled — enumerate and open */
+  ...
+  return 0;
+}
+DAT_100442b0 = 0;                /* past the deadline */
+return 0xffffffff;               /* Init fails — no device */
+```
+
+This project's own tools are unaffected — `m68ctl` and the web app
+implement the protocol directly and never load the SDK.
+
 ## Notes
 
 - [01 — Installer & unpacking](notes/01-installer.md)
