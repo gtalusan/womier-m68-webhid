@@ -173,6 +173,7 @@
     border-radius: 2px; margin-top: 8px; transition: width 120ms;
   }
   .board.busy .key { pointer-events: none; }
+  .board.locked .key { pointer-events: none; cursor: default; }
   .chip[disabled] { opacity: 0.5; pointer-events: none; }
   #remap-upload.busy { border-color: var(--ok); color: var(--ok); }
   .note { font-size: 0.72rem; color: var(--fg-dim); margin-top: 8px; }
@@ -1066,7 +1067,7 @@ function remapNote(msg, kind) {
   n.className = "note" + (kind ? " " + kind : "");
 }
 function remapCapClick(slot) {
-  if (RM.busy) return;
+  if (RM.busy || !connected) return;
   if (slot === FN_SLOT) { remapNote("Fn is a firmware marker — not remappable", "warn"); return; }
   const store = rmLoad();
   const over = store.profiles[store.current].keymap;
@@ -1452,14 +1453,17 @@ let connected = false;
 function setGate(kind, msg) {
   const gate = $("gate");
   const rail = document.querySelector(".rail");
+  const board = $("board");
   if (kind) {
     gate.hidden = false;
     gate.innerHTML = msg;
     rail.classList.add("locked");
+    board.classList.add("locked"); // caps too: remap needs a live board
   } else {
     gate.hidden = true;
     gate.innerHTML = "";
     rail.classList.remove("locked");
+    board.classList.remove("locked");
   }
 }
 async function connectHid() {
