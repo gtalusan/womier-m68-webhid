@@ -61,61 +61,85 @@
     position: relative; background: var(--bg-2); border: 1px solid var(--frame);
     border-radius: 12px; padding: 14px; overflow: hidden;
   }
-  .board { position: relative; user-select: none; container-type: inline-size; }
-  .keys { position: absolute; inset: 0; }
+  .board { position: relative; user-select: none; container-type: inline-size;
+    /* the app's keyboard frame QSS: QFrame#frame_bg */
+    background: rgb(25, 25, 25);
+    border: 1px solid rgb(33, 33, 33);
+    border-radius: 8px; }
+  .keys { position: absolute; inset: 0.8% 2% 7% 0.5%; } /* tighter left, bottom band absorbs the oversized widgets' bleed */
   /* drawn keycaps, faithful to the app's KeyInfo render: dark caps,
      labels top-left, additive backlight glow when lit.
      Label metrics are in cqw (1% of the board width ≈ 7 KBD units)
      so text scales with the caps at any window size. */
   .key {
     position: absolute;
-    border-radius: 3px;
     pointer-events: none;
-    background: linear-gradient(180deg, #23262d 0%, #16181d 100%);
-    border: 1px solid #2c3038;
-    box-shadow: inset 0 -2px 0 #0d0e11, 0 1px 0 #33373f;
+    /* the app's key widget is LARGER than the KeyInfo cell (measured:
+       black bg extends ~4 units right, ~6 below, overlapping the
+       gaps); the rounded face fills the cell itself */
+    background: #050505;
     overflow: hidden;
+    border-radius: 2px;
   }
-  .key span {
+  .key .face {
+    position: absolute;
+    inset: 3px 4px 6px 3px;
+    background: #4b4b4b;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+  .face span {
     position: absolute; left: 0.55cqw; top: 0.45cqw;
-    font-family: var(--font-data);
+    font-family: var(--font-body); font-weight: 500;
     font-size: 1.25cqw; /* ~9 KBD units; overridden per-key when the label is long */
-    color: #6a7180; line-height: 1.05; white-space: pre;
+    color: #c3c3c3; line-height: 1.05; white-space: pre;
     pointer-events: none;
   }
   .krail {
     position: absolute;
-    border-radius: 3px;
     pointer-events: none;
-    background: linear-gradient(180deg, #1b1e24 0%, #121418 100%);
-    border: 1px solid #23262d;
+    background: #050505;
     overflow: hidden;
+    border-radius: 2px;
   }
-  .krail span {
+  .krail .face {
+    position: absolute;
+    inset: 2px;
+    background: #3d3c3f;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  .face span {
     position: absolute; left: 0.55cqw; top: 0.45cqw;
     font-family: var(--font-data);
     font-size: 1.1cqw; /* overridden per-key when the label is long */
-    color: #4b5260; line-height: 1.05; white-space: pre;
+    color: #b9b8bc; line-height: 1.05; white-space: pre;
     pointer-events: none;
   }
-  /* light, not paint: an additive glow that spills around the cap… */
-  .key.on {
+  /* light, not paint: an additive glow that spills from inside the
+     cap; the cap's 3D shading stays visible underneath */
+  .key::after {
+    content: "";
+    position: absolute; inset: 0;
     background: radial-gradient(ellipse at center,
       var(--kc, #fff) 0%,
-      color-mix(in srgb, var(--kc, #fff) 45%, transparent) 50%,
-      transparent 80%);
+      color-mix(in srgb, var(--kc, #fff) 45%, transparent) 55%,
+      transparent 82%);
     mix-blend-mode: screen;
-    opacity: 0.92;
+    opacity: 0;
+    transition: opacity 120ms;
+    pointer-events: none;
   }
-  /* …plus a soft color wash on the cap face (legend ghosts through) */
-  .key.on::after {
+  .key.on::after { opacity: 0.92; }
+  /* soft color wash on the cap face */
+  .key.on .face::after {
     content: "";
     position: absolute; inset: 8% 4%;
     border-radius: 4px;
     background: var(--kc-fill, transparent);
     opacity: 0.6;
   }
-  .key.on span { color: #0a0b0d; }
+  .key.on .face span { color: #eef1f5; }
 
   /* --- remap mode (always on; the rail lock gates interactions) --- */
   .board.remap .key { pointer-events: auto; cursor: pointer; }
@@ -650,15 +674,21 @@ function buildKeys() {
   // long labels auto-shrink to stay inside the cap, like the app.
   const mk = (k, base) => {
     const el = document.createElement("div");
-    el.style.left = k.x / w * 100 + "%";
-    el.style.top = k.y / h * 100 + "%";
-    el.style.width = k.w / w * 100 + "%";
-    el.style.height = k.h / h * 100 + "%";
+    // the widget is larger than the KeyInfo cell — black bg bleeds
+    // into the gaps (measured: +3 top/left, +4 right, +6 bottom)
+    const M = (k.w >= 40 ? { t: 3, r: 4, b: 6, l: 3 } : { t: 2, r: 2, b: 2, l: 2 });
+    el.style.left = (k.x - M.l) / w * 100 + "%";
+    el.style.top = (k.y - M.t) / h * 100 + "%";
+    el.style.width = (k.w + M.l + M.r) / w * 100 + "%";
+    el.style.height = (k.h + M.t + M.b) / h * 100 + "%";
+    const face = document.createElement("div");
+    face.className = "face";
+    el.appendChild(face);
     const span = document.createElement("span");
     span.textContent = k.label;
     const fit = (k.w - 5) * 0.16 / Math.max(1, k.label.length);
     span.style.fontSize = Math.min(base, fit) + "cqw";
-    el.appendChild(span);
+    face.appendChild(span);
     box.appendChild(el);
     return el;
   };
