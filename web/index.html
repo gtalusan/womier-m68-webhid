@@ -199,6 +199,7 @@
   .board.busy .key { pointer-events: none; }
   .board.locked .key { pointer-events: none; cursor: default; }
   .chip[disabled] { opacity: 0.5; pointer-events: none; }
+  #sim-toggle[data-on="true"] { border-color: var(--warn); color: var(--warn); }
   #remap-upload.busy { border-color: var(--ok); color: var(--ok); }
   .note { font-size: 0.72rem; color: var(--fg-dim); margin-top: 8px; }
   .note.warn { color: var(--warn); }
@@ -289,7 +290,7 @@
   <header>
     <h1>M68 <span class="accent">Light Studio</span></h1>
     <span class="sub">Womier M68 HE · X82HERGB · effect preview</span>
-    <span class="chip" id="chip">app assets · M68.exe</span> <button type="button" class="chip" id="connect" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Connect keyboard</button>
+    <span class="chip" id="chip">app assets · M68.exe</span> <button type="button" class="chip" id="connect" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Connect keyboard</button> <button type="button" class="chip" id="sim-toggle" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Simulator</button>
   </header>
 
   <div id="gate" hidden></div>
@@ -1376,6 +1377,16 @@ async function remapSend(map, okMsg, uploadedSnapshot) {
     $("remap-upload").classList.remove("busy");
     $("remap-upload").textContent = "Upload to board";
   };
+  if (simulated) {
+    // no board: pretend the upload succeeded and say so
+    await new Promise((r) => setTimeout(r, 300));
+    RM.uploaded = { ...uploadedSnapshot };
+    unlock();
+    remapRefresh();
+    remapNote(okMsg + " (simulated — no board attached)", "ok");
+    $("remap-progress").hidden = true;
+    return;
+  }
   const frames = [];
   const push = (cmd, seg, pkt, len, chunk) => {
     const p = new Uint8Array(64);
@@ -1536,6 +1547,34 @@ function setGate(kind, msg) {
     board.classList.remove("locked");
   }
 }
+// ---- simulator mode: fakes a connected keyboard so the whole UI
+// works without hardware (preview, profiles, remap staging). Uploads
+// "succeed" against the void and say so. ----
+let simulated = false;
+function enterSim() {
+  simulated = true;
+  connected = true;
+  dev = { sendReport: async () => {}, close: async () => {} };
+  outReport = { reportId: 1 };
+  setGate(null);
+  $("sim-toggle").textContent = "Simulator: on";
+  $("sim-toggle").dataset.on = "true";
+  refreshProfiles();
+  remapRefresh();
+}
+function exitSim() {
+  simulated = false;
+  connected = false;
+  dev = null;
+  outReport = null;
+  $("sim-toggle").textContent = "Simulator";
+  $("sim-toggle").dataset.on = "false";
+  RM.source = null;
+  remapRefresh();
+  setGate("warn", "<b>No keyboard connected.</b> Click Connect keyboard and pick the M68 HE to unlock the controls, or use Simulator mode.");
+}
+$("sim-toggle").addEventListener("click", () => { simulated ? exitSim() : enterSim(); });
+
 async function connectHid() {
   const btn = $("connect");
   if (connected) { await disconnectHid(); return; }
@@ -1581,6 +1620,7 @@ async function connectHid() {
   }
 }
 async function disconnectHid() {
+  if (simulated) { exitSim(); return; }
   if (!dev) return;
   try { await dev.close(); } catch {}
   dev = null; connected = false; outReport = null;
@@ -1603,9 +1643,9 @@ if (navigator.hid) {
 }
 // boot gate: unsupported browser, or no keyboard yet
 if (!navigator.hid) {
-  setGate("warn", "<b>Unsupported browser.</b> WebHID is Chrome/Edge-only — open this page there to drive the keyboard.");
+  setGate("warn", "<b>Unsupported browser.</b> WebHID is Chrome/Edge-only — open this page there to drive the keyboard, or use Simulator mode to explore without hardware.");
 } else {
-  setGate("warn", "<b>No keyboard connected.</b> Click Connect keyboard and pick the M68 HE to unlock the controls.");
+  setGate("warn", "<b>No keyboard connected.</b> Click Connect keyboard and pick the M68 HE to unlock the controls, or use Simulator mode.");
 }
 
 // commit real frames on every control change (when connected), and
