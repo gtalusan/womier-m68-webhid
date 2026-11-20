@@ -1459,7 +1459,11 @@ function queryFrame(cmd, payload) {
   return p;
 }
 function hidSend(frame) {
-  if (!dev || !outReport) return Promise.resolve();
+  if (!dev || !outReport) {
+    // connected-but-missing transport = the weird state — say so
+    if (connected) sendWarn("<b>Not connected.</b> The keyboard handle is missing — click Connect keyboard. Changes aren't reaching the board.");
+    return Promise.resolve();
+  }
   sendQueue = sendQueue.then(async () => {
     // WebHID data excludes the reportId byte; length must match the
     // output report. Handle both reportSize conventions.
@@ -1467,11 +1471,24 @@ function hidSend(frame) {
     try {
       await dev.sendReport(outReport.reportId, body);
     } catch (e) {
-      await dev.sendReport(outReport.reportId, new Uint8Array(frame));
+      try {
+        await dev.sendReport(outReport.reportId, new Uint8Array(frame));
+      } catch (e2) {
+        sendWarn("<b>Send failed.</b> The keyboard isn't answering — check the cable. Changes aren't reaching the board.");
+        throw e2;
+      }
     }
+    sendOk();
     await new Promise((r) => setTimeout(r, 100)); // the app's pacing
   }).catch((e) => { console.warn("HID send failed", e); });
   return sendQueue;
+}
+let sendWarnShown = false;
+function sendWarn(msg) {
+  if (!sendWarnShown) { sendWarnShown = true; setGate("warn", msg); }
+}
+function sendOk() {
+  if (sendWarnShown) { sendWarnShown = false; setGate(null); }
 }
 function commitCurrent() {
   const mode = MODES.find(([n]) => n === S.mode);
