@@ -1402,7 +1402,7 @@ async function remapSend(map, okMsg, uploadedSnapshot) {
   let done = 0;
   sendQueue = sendQueue.then(async () => {
     for (const { f, pace } of frames) {
-      if (!dev) throw new Error("keyboard disconnected mid-upload — replug and retry");
+      if (!dev || !outReport) throw new Error("keyboard disconnected mid-upload — replug and retry");
       const body = new Uint8Array(f.subarray(1));
       try { await dev.sendReport(outReport.reportId, body); }
       catch { await dev.sendReport(outReport.reportId, new Uint8Array(f)); }
@@ -1459,7 +1459,7 @@ function queryFrame(cmd, payload) {
   return p;
 }
 function hidSend(frame) {
-  if (!dev) return Promise.resolve();
+  if (!dev || !outReport) return Promise.resolve();
   sendQueue = sendQueue.then(async () => {
     // WebHID data excludes the reportId byte; length must match the
     // output report. Handle both reportSize conventions.
@@ -1529,14 +1529,21 @@ async function connectHid() {
     return;
   }
   try {
-    // previously granted? reopen without the chooser
+    // previously granted? reopen without the chooser. The device has
+    // several collections (mouse/consumer/vendor) — pick one that can
+    // actually WRITE (has output reports), or the first as fallback.
     let ds = await navigator.hid.getDevices();
     if (!ds.length) ds = await navigator.hid.requestDevice({ filters: [{ vendorId: HID_VID, productId: HID_PID }] });
-    dev = ds[0];
+    dev = ds.find((d) => d.collections.some((c) => c.outputReports.length)) ?? ds[0];
     if (!dev) return;
     await dev.open();
     outReport = dev.collections.flatMap((c) => c.outputReports).find((r) => r.reportId === 1)
       ?? dev.collections.flatMap((c) => c.outputReports)[0];
+    if (!outReport) {
+      await dev.close();
+      dev = null;
+      throw new Error("the chosen collection has no output reports — pick the vendor collection (the one that can write)");
+    }
     dev.addEventListener("inputreport", onInputReport);
     btn.textContent = "Disconnect keyboard";
     btn.style.borderColor = "var(--ok)";
@@ -1569,7 +1576,7 @@ $("connect").addEventListener("click", connectHid);
 if (navigator.hid) {
   navigator.hid.addEventListener("disconnect", (e) => {
     if (e.device === dev) {
-      dev = null; connected = false;
+      dev = null; connected = false; outReport = null;
       RM.source = null; remapRefresh();
       $("connect").textContent = "Reconnect keyboard";
       $("connect").style.borderColor = "";
