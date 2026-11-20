@@ -70,8 +70,14 @@ const USAGE_NAMES = {
   0x4d: "End", 0x4e: "PageDown", 0x4f: "Right", 0x50: "Left",
   0x51: "Down", 0x52: "Up",
   0x53: "NumLock",
+  0x54: "NumpadDivide", 0x55: "NumpadMultiply", 0x56: "NumpadMinus",
+  0x57: "NumpadPlus", 0x58: "NumpadEnter",
+  0x59: "Numpad1", 0x5a: "Numpad2", 0x5b: "Numpad3", 0x5c: "Numpad4",
+  0x5d: "Numpad5", 0x5e: "Numpad6", 0x5f: "Numpad7", 0x60: "Numpad8",
+  0x61: "Numpad9", 0x62: "Numpad0", 0x63: "NumpadPeriod",
+  0x65: "Menu",
   0xe0: "LeftCtrl", 0xe1: "LeftShift", 0xe2: "LeftAlt", 0xe3: "LeftGui",
-  0xe5: "RightShift", 0xe6: "RightAlt",
+  0xe4: "RightCtrl", 0xe5: "RightShift", 0xe6: "RightAlt", 0xe7: "RightGui",
 };
 
 /** kc → name (all USAGE_NAMES entries). */

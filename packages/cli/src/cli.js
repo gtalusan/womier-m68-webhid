@@ -86,6 +86,13 @@ const ALIASES = {
   ins: "Insert", del: "Delete", bsp: "Backspace", esc: "Esc",
   lshift: "LeftShift", rshift: "RightShift", lctrl: "LeftCtrl",
   lalt: "LeftAlt", ralt: "RightAlt", lwin: "LeftGui", rwin: "RightGui",
+  rctrl: "RightCtrl", numlock: "NumLock",
+  num1: "Numpad1", num2: "Numpad2", num3: "Numpad3", num4: "Numpad4",
+  num5: "Numpad5", num6: "Numpad6", num7: "Numpad7", num8: "Numpad8",
+  num9: "Numpad9", num0: "Numpad0", numenter: "NumpadEnter",
+  numplus: "NumpadPlus", numminus: "NumpadMinus", nummul: "NumpadMultiply",
+  numdiv: "NumpadDivide", numdot: "NumpadPeriod", numdel: "NumpadPeriod",
+  menu: "Menu", contextmenu: "Menu",
   up: "Up", down: "Down", left: "Left", right: "Right", space: "Space",
 };
 // media targets (operateType 3) — "media:N" where N = the app's
