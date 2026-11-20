@@ -1,6 +1,6 @@
 # 13 — Web app: faithful keyboard render (KeyInfo geometry)
 
-## The delta that prompted this (2026-11-19)
+## The delta that prompted this
 
 The web app drew its keyboard as a static product-shot
 (`web/assets/keyboard.png`) + a hand-calibrated uniform 6×22 overlay
@@ -121,10 +121,12 @@ took B's action) — fixed and re-verified.
   3/4 too.
 - **Export/Import** the profile store (JSON) — portability across
   browsers, since the board's keymap has no read-back command.
-- **Upload UX**: hard-locks the whole UI (rail + caps + chips),
-  live percent, "Uploading…" state; **Reset board** pushes the stock
-  keymap AND clears the profile (board reset implies profile reset);
-  upload/reset moved to their own **Apply** panel below Remap.
+- **Upload UX**: hard-locks the whole UI (rail + Effect + caps +
+  chips), live percent, "Uploading…" state; the keymap actions live
+  **inside Remap**: “Upload keymap to board”, “Restore stock keymap”
+  (writes stock keymap + clears this profile’s remaps), and “Clear
+  profile remaps” (local only). Lighting is reset separately with
+  “Reset lighting” in the Effect header.
 - **Disconnect is a function**: the Connect chip toggles to
   "Disconnect keyboard" (`device.close()`), and reconnecting reuses
   the grant via `getDevices()` — no chooser.

@@ -33,6 +33,11 @@ WebHID:
   across power cycles
 - **Register readback on connect** — the UI hydrates to whatever the
   keyboard currently has, and locks itself until a board is attached
+- **Polling rate** — device-wide 1K/2K/4K/8K, read back on connect and
+  applied immediately (the same 0x21 sub 9 command the CLI uses)
+- **Debounce + per-key sensitivity** — Debounce 0–7 device-wide; Keys →
+  Tune reads/applies press/release sensitivity per key, with per-key,
+  all-key, and QT-preserving “apply to all keys” actions
 - Effect animations follow the device's verified behavior: fg/bg roles
   per mode, full-color cycling, direction semantics (Wave, Radar,
   Striation, Aurora, Speed Respond)
@@ -134,6 +139,9 @@ implement the protocol directly and never load the SDK.
 - [12 — Keymap CLI: feasibility plan + implementation log](notes/12-keymap-cli-plan.md)
 - [13 — Web app: faithful render + remap UI](notes/13-webapp-faithful-render.md)
 - [14 — Keymap entry encodings: all operateTypes](notes/14-keymap-entry-encodings.md)
+- [15 — Macros plan](notes/15-macros-plan.md)
+- [16 — Polling/report rate (0x21 sub 9)](notes/16-polling-rate.md)
+- [17 — HE tuning: sensitivity + debounce](notes/17-he-tuning.md)
 
 ## Software
 

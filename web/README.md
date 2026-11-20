@@ -34,6 +34,14 @@ enable Pages on the repo).
   cycles, same as the vendor app.
 - **Register readback** on connect: the UI hydrates to the keyboard's
   actual state.
+- **Polling rate** (device-wide 1K/2K/4K/8K): read back on connect and
+  applied immediately through the HE-parameter command (0x21 sub 9).
+- **Debounce / anti-shake** (device-wide 0–7) in the Device panel.
+- **Per-key sensitivity** via Keys → Tune: read a key’s press/release
+  values, apply new ones (0.1 mm steps), reset that key, reset all, or
+  apply to all keys. The all-keys path reads every key once, groups by
+  Quick Trigger pair, and preserves each key’s QT values. Board-side
+  setting; the profile store does not hold it.
 
 ## Protocol credits
 

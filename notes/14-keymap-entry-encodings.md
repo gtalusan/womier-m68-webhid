@@ -1,6 +1,6 @@
 # 14 — Keymap entry encodings (all operateTypes) — binary-verified
 
-RE'd 2026-11-19 from M68.exe `FUN_00471ce0` — the Download path that
+RE'd from M68.exe `FUN_00471ce0` — the Download path that
 compiles the profile XML into the 132-slot keymap AND sends the 0x18
 upload (same function; the 14-items-per-packet flush and Sleep(400)
 are visible in the decomp, matching usb7/usb8 byte-for-byte).
@@ -53,7 +53,7 @@ built-in media keycodes use the same markers — keyCode 0x80 → `07 10`
 (Vol+), 0x81 → `07 11` (Vol−), 0x7f → `07 12` (Mute), 0xd7 → `07 32`
 (Calc). ✓ internal agreement.
 
-## The macro content format (wire 0x19) — decoded 2026-11-19
+## The macro content format (wire 0x19) — decoded
 
 Four agents cross-checked the Download pipeline; all claims below are
 asm-verified (the old notes' "0x51a = 1306 bytes of macro text" and
@@ -88,7 +88,7 @@ asm-verified (the old notes' "0x51a = 1306 bytes of macro text" and
 - **No checksum anywhere.** The event list is padded with zeros to
   248 bytes and sent as-is.
 
-## The DKS content format (wire 0x22) — decoded 2026-11-19
+## The DKS content format (wire 0x22) — decoded
 
 - **Bank**: wire 0x22 = the SeniorKey/DKS store (app cmd 0x2A
   remapped). 40 slots; each slot = one 64-byte report
@@ -122,19 +122,19 @@ default map" reading in notes/11 was an unedited Fn layer.)
 
 ## Wire-verification status
 
-- **MEDIA ✅ (2026-11-19):** `keymap set Insert=Play/Pause --upload`
+- **MEDIA ✅:** `keymap set Insert=Play/Pause --upload`
   → pressing Insert emits `cd 00` on the consumer channel (usage
   0x00CD = Play/Pause; press/release pairs in the WebHID probe).
   The firmware translates its compact media bytes into standard HID
   consumer usages — macOS handles them natively.
-- **MOUSE ✅ (2026-11-19):** `Insert=ScrollUp/Down` scroll the window
+- **MOUSE ✅:** `Insert=ScrollUp/Down` scroll the window
   under the cursor; `Insert=LeftClick` clicks. Mouse reports ride the
   boot-mouse interface (the probe can't see them — the cursor is the
   test).
 - **Macro/DKS:** binary-verified (above), NOT hardware-tested — a
   capture with a real macro (usb9) is the closing step.
 
-## Corrections ledger (2026-11-19 decode pass)
+## Corrections ledger (decode pass)
 
 - `0x51a` in the compiler = **1306 DWORDs (5224 bytes)**, the
   by-value SDK per-key record — not "1306 bytes of macro text".

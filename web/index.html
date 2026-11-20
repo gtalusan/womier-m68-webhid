@@ -38,7 +38,7 @@
     font-size: 14px;
     line-height: 1.5;
   }
-  .wrap { max-width: 1180px; margin-inline: auto; }
+  .wrap { max-width: 1680px; margin-inline: auto; }
 
   header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 18px; }
   header h1 {
@@ -54,6 +54,8 @@
   }
 
   .layout { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+  /* board + Effect occupy the left column; the control rail fills the right */
+  .main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   @media (min-width: 1060px) { .layout { grid-template-columns: minmax(0, 1fr) 390px; } }
 
   /* --- keyboard stage --- */
@@ -146,10 +148,18 @@
   .board.remap .key:hover { border-color: #4a5161; }
   .board.remap .key.noremap { cursor: not-allowed; opacity: 0.6; }
   .key.sel-source { outline: 2px solid var(--warn); outline-offset: 1px; }
+  .key.tune-sel { outline: 2px solid var(--accent); outline-offset: 1px; }
   .key.staged { outline: 1px dashed var(--warn); outline-offset: 1px; }
   .key.staged span { color: var(--warn); }
   .key.uploaded { outline: 1px solid var(--ok); outline-offset: 1px; }
   .key.uploaded span { color: var(--ok); }
+  /* profile is the main context selector — a full-width tab bar above
+     the layout so effects/remaps always read as per-profile settings */
+  .profile-bar {
+    background: var(--bg-2); border: 1px solid var(--frame);
+    border-radius: 12px; padding: 10px 14px; margin-bottom: 16px;
+  }
+  .profile-bar .tab-summary { margin: 8px 2px 0; }
   .tabs { display: flex; gap: 6px; }
   .tab {
     flex: 1; appearance: none; cursor: pointer; font: 500 0.74rem var(--font-body);
@@ -185,13 +195,20 @@
     border-radius: 4px; padding: 0 6px;
   }
   .staged .x:hover { color: var(--warn); border-color: var(--warn); }
-  #remap-upload, #remap-reset-prof {
+  #remap-upload, #remap-reset-board, #remap-reset-prof,
+  #tune-apply, #tune-apply-all, #tune-reset-key, #tune-reset-all {
     font: 500 0.72rem var(--font-body); cursor: pointer;
     background: var(--bg-3); color: var(--fg); border: 1px solid var(--frame);
     border-radius: 6px; padding: 5px 12px;
   }
+  #tune-apply:disabled, #tune-apply-all:disabled, #tune-reset-key:disabled, #tune-reset-all:disabled {
+    opacity: 0.45; cursor: default;
+  }
+  input[type="range"] { flex: 1; min-width: 80px; accent-color: var(--accent); }
+  .val { font-family: var(--font-data); font-size: 0.7rem; color: var(--fg); min-width: 3.6em; text-align: right; }
   #remap-upload:hover { border-color: var(--ok); }
-  #remap-reset-prof:hover { border-color: var(--warn); }
+  #remap-reset-board:hover, #remap-reset-prof:hover { border-color: var(--warn); }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; }
   #remap-progress {
     height: 4px; width: 0; background: var(--ok);
     border-radius: 2px; margin-top: 8px; transition: width 120ms;
@@ -212,7 +229,7 @@
 
   /* --- control rail --- */
   .rail { display: flex; flex-direction: column; gap: 12px; }
-  .rail.locked { opacity: 0.45; pointer-events: none; filter: saturate(0.6); }
+  .rail.locked, .panel.locked, .profile-bar.locked { opacity: 0.45; pointer-events: none; filter: saturate(0.6); }
   #gate {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     border: 1px solid var(--warn); border-radius: 10px;
@@ -226,7 +243,14 @@
     margin: 0 0 10px; font-family: var(--font-display); font-size: 0.78rem;
     font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-dim);
   }
-  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .panel-head h2 { margin: 0; }
+  .subhead {
+    margin: 14px 0 8px; padding-top: 12px; border-top: 1px solid var(--frame);
+    font-family: var(--font-display); font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-dim);
+  }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
   .mode {
     appearance: none; cursor: pointer; text-align: left;
     background: var(--bg-3); color: var(--fg); border: 1px solid var(--frame);
@@ -295,7 +319,19 @@
 
   <div id="gate" hidden></div>
 
+  <div class="profile-bar" id="profile-bar">
+    <div class="tabs" id="prof-tabs"></div>
+    <div class="tab-summary">
+      <span id="prof-summary"></span>
+      <span style="flex:1"></span>
+      <button id="prof-export" type="button" class="minibtn" title="Download the profile store (JSON)">Export</button>
+      <button id="prof-import" type="button" class="minibtn" title="Load our JSON or the app's Profile XML">Import</button>
+      <input type="file" id="prof-file" accept=".json,.xml" hidden>
+    </div>
+  </div>
+
   <div class="layout">
+    <div class="main">
     <section class="stage" aria-label="Keyboard preview">
       <div class="board" id="board">
         <div class="keys" id="keys"></div>
@@ -308,22 +344,13 @@
         <span style="flex:1"></span>
       </div>
     </section>
-
-    <aside class="rail" aria-label="Controls">
-      <div class="tabs" id="prof-tabs"></div>
-      <div class="tab-summary">
-        <span id="prof-summary"></span>
-        <span style="flex:1"></span>
-        <button id="prof-export" type="button" class="minibtn" title="Download the profile store (JSON)">Export</button>
-        <button id="prof-import" type="button" class="minibtn" title="Load our JSON or the app's Profile XML">Import</button>
-        <input type="file" id="prof-file" accept=".json,.xml" hidden>
-      </div>
-      <div class="panel">
-        <h2>Effect</h2>
+      <div class="panel" id="effect-panel">
+        <div class="panel-head">
+          <h2>Effect</h2>
+          <button id="reset-lighting" type="button" class="minibtn" title="Set this profile to Static red, brightness 2, speed 2, and commit it">Reset lighting</button>
+        </div>
         <div class="modes" id="modes"></div>
-      </div>
-      <div class="panel">
-        <h2>Parameters</h2>
+        <div class="subhead">Parameters</div>
         <div class="row">
           <label>Brightness</label>
           <div class="steps" id="brightness"></div>
@@ -348,33 +375,83 @@
           <label>Full color</label>
           <span class="toggle" id="fc" role="switch" aria-checked="false" tabindex="0"></span>
         </div>
+        <div class="note" id="light-note"></div>
       </div>
-      <div class="panel" id="remap-panel">
-        <h2>Remap</h2>
-        <div class="row">
-          <label>Selection</label>
-          <span class="sel-label" id="remap-sel-label">click a key on the board</span>
-        </div>
-        <div class="row" id="remap-tray-row" hidden>
-          <label>Target</label>
-          <div class="tray" id="remap-tray"></div>
-        </div>
-        <div class="row">
-          <label>Staged</label>
-          <div class="staged" id="remap-staged">(none)</div>
-        </div>
-      </div>
-      <div class="panel" id="apply-panel">
-        <h2>Apply</h2>
-        <div class="row">
-          <button id="remap-upload" type="button">Upload to board</button>
-          <button id="remap-reset-board" type="button">Reset board</button>
-          <button id="remap-reset-prof" type="button">Reset profile</button>
-        </div>
-        <div class="progress" id="remap-progress" hidden></div>
-        <div class="note" id="remap-note"></div>
-      </div>
+    </div>
 
+    <aside class="rail" aria-label="Controls">
+      <div class="panel" id="remap-panel">
+        <div class="panel-head">
+          <h2>Keys</h2>
+          <div class="dirs" id="key-tabs">
+            <button type="button" class="dir sel" data-mode="remap">Remap</button>
+            <button type="button" class="dir" data-mode="tune">Tune</button>
+          </div>
+        </div>
+        <div id="remap-tab">
+          <div class="row">
+            <label>Selection</label>
+            <span class="sel-label" id="remap-sel-label">click a key on the board</span>
+          </div>
+          <div class="row" id="remap-tray-row" hidden>
+            <label>Target</label>
+            <div class="tray" id="remap-tray"></div>
+          </div>
+          <div class="row">
+            <label>Staged</label>
+            <div class="staged" id="remap-staged">(none)</div>
+          </div>
+          <div class="actions">
+            <button id="remap-upload" type="button" title="Write this profile’s remapped keymap to the board">Upload keymap to board</button>
+            <button id="remap-reset-board" type="button" title="Write the stock keymap to the board and clear this profile’s remaps">Restore stock keymap</button>
+            <button id="remap-reset-prof" type="button" title="Clear this profile’s staged remaps locally (no board write)">Clear profile remaps</button>
+          </div>
+          <div class="progress" id="remap-progress" hidden></div>
+          <div class="note" id="remap-note"></div>
+        </div>
+        <div id="tune-tab" hidden>
+          <div class="row">
+            <label>Selected</label>
+            <span class="sel-label" id="tune-sel-label">click a key on the board</span>
+          </div>
+          <div class="row">
+            <label>Status</label>
+            <span class="sel-label" id="tune-status">no key selected</span>
+          </div>
+          <div class="subhead">Sensitivity</div>
+          <div class="row">
+            <label>Press</label>
+            <input type="range" id="tune-press" min="1" max="20" value="1" disabled>
+            <span class="val" id="tune-press-v">0.1 mm</span>
+          </div>
+          <div class="row">
+            <label>Release</label>
+            <input type="range" id="tune-release" min="1" max="20" value="1" disabled>
+            <span class="val" id="tune-release-v">0.1 mm</span>
+          </div>
+          <div class="actions">
+            <button id="tune-apply" type="button" disabled>Apply to key</button>
+            <button id="tune-apply-all" type="button" disabled>Apply to all keys</button>
+            <button id="tune-reset-key" type="button" disabled>Reset key to default</button>
+            <button id="tune-reset-all" type="button" disabled>Reset all sensitivity</button>
+          </div>
+          <div class="note" id="tune-note"></div>
+          <div class="note" id="tune-hint">board-side per-key setting · not stored in the profile JSON</div>
+        </div>
+      </div>
+      <div class="panel" id="device-panel">
+        <h2>Device</h2>
+        <div class="row">
+          <label>Polling rate</label>
+          <div class="dirs" id="rates"></div>
+        </div>
+        <div class="note" id="rate-note"></div>
+        <div class="row">
+          <label>Debounce</label>
+          <div class="dirs" id="debounce"></div>
+        </div>
+        <div class="note" id="debounce-note"></div>
+      </div>
     </aside>
   </div>
 
@@ -637,6 +714,257 @@ function livePresses(maxAgeMs) {
 // state goes off until the register readback lands — if it never does,
 // everything stays off (user requirement).
 const S = { mode: "Static", b: 0, s: 3, fg: "#ff0000", bg: "#000000", fc: false, dir: 0 };
+
+// ---- polling rate (wire 0x21 sub 9; device-wide, not per-profile) ----
+// Code 1/2/4/8 = 1K/2K/4K/8K. Read back on connect; applied immediately.
+const RATES = [[1, "1K"], [2, "2K"], [4, "4K"], [8, "8K"]];
+let rateCode = 8; // connected-but-no-data default is 8K; readback corrects it
+function drawRate() {
+  const box = $("rates");
+  box.innerHTML = "";
+  for (const [code, label] of RATES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "dir" + (code === rateCode ? " sel" : "");
+    b.textContent = label;
+    b.title = `${code * 1000} Hz — device-wide`;
+    b.onclick = () => setRate(code);
+    box.appendChild(b);
+  }
+  $("rate-note").textContent = rateCode === null
+    ? "device-wide · read back on connect"
+    : `device-wide · ${rateCode * 1000} Hz`;
+}
+async function setRate(code) {
+  if (!dev) return;
+  rateCode = code; // optimistic; the board's reply confirms/corrects it
+  drawRate();
+  await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 9, 1, code]));
+}
+
+// ---- debounce / key anti-shake (wire 0x21 sub 10; device-wide) ----
+const DEBOUNCE_MAX = 7;
+let debounceCode = DEBOUNCE_MAX; // connected-but-no-data default = most
+function drawDebounce() {
+  const box = $("debounce");
+  box.innerHTML = "";
+  for (let v = 0; v <= DEBOUNCE_MAX; v++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "dir" + (v === debounceCode ? " sel" : "");
+    b.textContent = String(v);
+    b.title = v === DEBOUNCE_MAX ? "most debounce" : v === 0 ? "least debounce" : `${v} (of ${DEBOUNCE_MAX})`;
+    b.onclick = () => setDebounce(v);
+    box.appendChild(b);
+  }
+  $("debounce-note").textContent = `device-wide · ${debounceCode} of ${DEBOUNCE_MAX} · ${DEBOUNCE_MAX} = most`;
+}
+async function setDebounce(code) {
+  if (!dev) return;
+  debounceCode = code;
+  drawDebounce();
+  await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 10, 1, code]));
+}
+
+// ---- per-key sensitivity (0x21 sub 5 read, 1 apply, 0 reset key, 6 reset all) ----
+let keyMode = "remap"; // "remap" | "tune"
+let tuneDefault = 20; // default press/release (0.1 mm → 2.0 mm); refined by sub 4
+const TUNE = {
+  slot: null, label: null, row: null, col: null,
+  flag: 0, press: 1, release: 1, qtPress: 1, qtRelease: 1,
+  hasData: false, reading: false, busy: false,
+};
+let tuneQtCache = null; // physical key → QT pair map, built once per connection
+const tuneBatch = []; // {resolve, reject, timer} for all-keys readback
+function tuneKey() { return TUNE.slot == null ? null : (KBD.keys.find((k) => k.slot === TUNE.slot) ?? null); }
+function tuneNote(msg, kind) {
+  const n = $("tune-note");
+  n.textContent = msg || "";
+  n.className = "note" + (kind ? " " + kind : "");
+}
+function tuneMm(v) { return (v / 10).toFixed(1) + " mm"; }
+function tuneUpdateUI() {
+  const key = tuneKey();
+  $("tune-sel-label").textContent = key && TUNE.row != null
+    ? `${key.label} · r${TUNE.row}c${TUNE.col}`
+    : "click a key on the board";
+  $("tune-status").textContent = !key ? "no key selected"
+    : TUNE.reading ? "reading…"
+    : !TUNE.hasData ? "no data yet"
+    : TUNE.flag ? "CUSTOM override" : "DEFAULT (no override)";
+  $("tune-press").value = TUNE.press;
+  $("tune-release").value = TUNE.release;
+  $("tune-press-v").textContent = tuneMm(TUNE.press);
+  $("tune-release-v").textContent = tuneMm(TUNE.release);
+  const canAct = !!key && !!dev && !TUNE.busy && !TUNE.reading;
+  $("tune-apply").disabled = !canAct;
+  $("tune-apply-all").disabled = !canAct;
+  $("tune-reset-key").disabled = !canAct;
+  $("tune-reset-all").disabled = !dev || TUNE.busy;
+  $("tune-press").disabled = $("tune-release").disabled = !key || TUNE.busy;
+}
+function setKeyMode(mode) {
+  keyMode = mode;
+  for (const b of document.querySelectorAll("#key-tabs .dir")) b.classList.toggle("sel", b.dataset.mode === mode);
+  $("remap-tab").hidden = mode !== "remap";
+  $("tune-tab").hidden = mode !== "tune";
+  for (const el of keyEl.values()) el.classList.remove("sel-source", "tune-sel");
+  if (mode === "remap") remapRefresh();
+  else if (TUNE.slot != null) keyEl.get(TUNE.slot)?.classList.add("tune-sel");
+  tuneUpdateUI();
+}
+function tuneCapClick(slot) {
+  if (TUNE.busy || TUNE.reading || !connected) return;
+  const k = KBD.keys.find((x) => x.slot === slot);
+  if (!k) return;
+  TUNE.slot = slot; TUNE.label = k.label;
+  TUNE.row = Math.floor(slot / 22); TUNE.col = slot % 22;
+  TUNE.flag = 0; TUNE.hasData = false;
+  TUNE.press = 1; TUNE.release = 1; TUNE.qtPress = 1; TUNE.qtRelease = 1;
+  tuneNote("");
+  for (const el of keyEl.values()) el.classList.remove("tune-sel");
+  keyEl.get(slot)?.classList.add("tune-sel");
+  tuneReadKey();
+}
+function tuneReadKey() {
+  if (TUNE.slot == null) return;
+  TUNE.reading = true; TUNE.hasData = false; tuneUpdateUI();
+  if (simulated) {
+    setTimeout(() => {
+      if (TUNE.reading && TUNE.slot != null) {
+        TUNE.flag = 0; TUNE.press = 20; TUNE.release = 20;
+        TUNE.qtPress = 1; TUNE.qtRelease = 1;
+        TUNE.hasData = true; TUNE.reading = false; tuneUpdateUI();
+      }
+    }, 150);
+    return;
+  }
+  hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 5, TUNE.row, TUNE.col]));
+  setTimeout(() => {
+    if (TUNE.reading) { TUNE.reading = false; tuneUpdateUI(); tuneNote("key did not answer the readback", "warn"); }
+  }, 1500);
+}
+function tuneMask() {
+  const m = new Array(22).fill(0);
+  m[TUNE.col] = 1 << TUNE.row;
+  return m;
+}
+async function tuneApply() {
+  if (!dev || TUNE.slot == null || TUNE.busy) return;
+  TUNE.busy = true; tuneUpdateUI(); tuneNote("applying…");
+  await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 1, ...tuneMask(), TUNE.press, TUNE.release, TUNE.qtPress, TUNE.qtRelease]));
+  await new Promise((r) => setTimeout(r, 150));
+  TUNE.busy = false; TUNE.flag = 1; TUNE.hasData = true;
+  if (!simulated) tuneReadKey(); else tuneUpdateUI();
+  tuneNote(`applied ${tuneMm(TUNE.press)} / ${tuneMm(TUNE.release)} to ${TUNE.label}`, "ok");
+}
+async function tuneResetKey() {
+  if (!dev || TUNE.slot == null || TUNE.busy) return;
+  TUNE.busy = true; tuneUpdateUI(); tuneNote("resetting key…");
+  await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 0, ...tuneMask(), tuneDefault, tuneDefault, TUNE.qtPress, TUNE.qtRelease]));
+  await new Promise((r) => setTimeout(r, 150));
+  TUNE.busy = false; TUNE.flag = 0; TUNE.press = tuneDefault; TUNE.release = tuneDefault; TUNE.hasData = true;
+  if (!simulated) tuneReadKey(); else tuneUpdateUI();
+  tuneNote(`reset ${TUNE.label} to default (${tuneMm(tuneDefault)})`, "ok");
+}
+async function tuneResetAll() {
+  if (!dev || TUNE.busy) return;
+  if (!window.confirm("Reset press/release sensitivity for all keys to the default?")) return;
+  TUNE.busy = true; tuneUpdateUI(); tuneNote("resetting all sensitivity…");
+  await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 6]));
+  await new Promise((r) => setTimeout(r, 200));
+  TUNE.busy = false;
+  if (TUNE.slot != null) tuneReadKey();
+  tuneNote("all press/release sensitivity reset to default", "ok");
+}
+function readTuneKey(row, col) {
+  return new Promise((resolve, reject) => {
+    const entry = { resolve, reject, timer: null };
+    entry.timer = setTimeout(() => {
+      const i = tuneBatch.indexOf(entry);
+      if (i >= 0) tuneBatch.splice(i, 1);
+      reject(new Error(`no response for r${row}c${col}`));
+    }, 1500);
+    tuneBatch.push(entry);
+    hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 5, row, col]));
+  });
+}
+async function readAllKeyQt() {
+  const keys = KBD.keys.map((k) => ({
+    slot: k.slot, label: k.label,
+    row: Math.floor(k.slot / 22), col: k.slot % 22,
+  }));
+  const out = [];
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    tuneNote(`reading all keys… ${i + 1}/${keys.length}`, "warn");
+    const v = await readTuneKey(k.row, k.col);
+    out.push({ ...k, ...v });
+  }
+  return out;
+}
+async function tuneApplyAll() {
+  if (!dev || TUNE.slot == null || TUNE.busy) return;
+  const press = TUNE.press, release = TUNE.release;
+  const count = KBD.keys.length;
+  if (!window.confirm(`Apply ${tuneMm(press)} / ${tuneMm(release)} to all ${count} keys? Each key keeps its Quick Trigger values.`)) return;
+  TUNE.busy = true; tuneUpdateUI();
+  try {
+    let rows;
+    if (simulated) {
+      rows = KBD.keys.map((k) => ({
+        slot: k.slot, label: k.label,
+        row: Math.floor(k.slot / 22), col: k.slot % 22,
+        qtPress: 1, qtRelease: 1,
+      }));
+      tuneNote("applying to all keys… (simulated)", "warn");
+    } else {
+      if (!tuneQtCache) tuneQtCache = await readAllKeyQt();
+      rows = tuneQtCache;
+      tuneNote("applying to all keys…");
+    }
+    const groups = new Map();
+    for (const k of rows) {
+      const qt = `${k.qtPress}/${k.qtRelease}`;
+      if (!groups.has(qt)) groups.set(qt, { qtPress: k.qtPress, qtRelease: k.qtRelease, keys: [] });
+      groups.get(qt).keys.push(k);
+    }
+    let gi = 0;
+    for (const g of groups.values()) {
+      gi++;
+      const mask = new Array(22).fill(0);
+      for (const k of g.keys) mask[k.col] |= 1 << k.row;
+      tuneNote(`applying to all keys… group ${gi}/${groups.size}`);
+      await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 1, ...mask, press, release, g.qtPress, g.qtRelease]));
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    TUNE.flag = 1; TUNE.hasData = true;
+    if (!simulated) tuneReadKey(); else tuneUpdateUI();
+    tuneNote(`applied ${tuneMm(press)} / ${tuneMm(release)} to ${count} keys (${groups.size} QT group${groups.size === 1 ? "" : "s"})`, "ok");
+  } catch (e) {
+    tuneNote(e.message || "apply-to-all failed", "warn");
+  } finally {
+    TUNE.busy = false; tuneUpdateUI();
+  }
+}
+function boardCapClick(slot) {
+  if (keyMode === "tune") tuneCapClick(slot);
+  else remapCapClick(slot);
+}
+function resetTune() {
+  TUNE.slot = null; TUNE.label = null; TUNE.row = null; TUNE.col = null;
+  TUNE.flag = 0; TUNE.press = 1; TUNE.release = 1;
+  TUNE.qtPress = 1; TUNE.qtRelease = 1;
+  TUNE.hasData = false; TUNE.reading = false; TUNE.busy = false;
+  tuneQtCache = null;
+  while (tuneBatch.length) {
+    const w = tuneBatch.shift();
+    clearTimeout(w.timer);
+    w.reject(new Error("tune reset"));
+  }
+  for (const el of keyEl.values()) el.classList.remove("tune-sel");
+  tuneUpdateUI();
+}
 // verified direction maps (notes/10); defaults = the app's stored defaults
 const DIRECTION_OPTS = {
   Wave: { left: 1, right: 0, up: 2, down: 3, inward: 5, outward: 4 },
@@ -697,7 +1025,7 @@ function buildKeys() {
     const el = mk(k, 1.25);
     el.className = "key";
     el.dataset.slot = k.slot;
-    el.addEventListener("click", () => remapCapClick(k.slot));
+    el.addEventListener("click", () => boardCapClick(k.slot));
     keyEl.set(k.slot, el);
     keys.push(el);
   }
@@ -1052,6 +1380,8 @@ function swatchesFor(id, cur, cb) {
   }
 }
 function sync() {
+  const ln = $("light-note");
+  if (ln) { ln.textContent = ""; ln.className = "note"; }
   const mode = MODES.find(([n]) => n === S.mode);
   const params = mode[2];
   $("cap-mode").textContent = S.mode;
@@ -1088,6 +1418,18 @@ $("board").classList.add("remap"); // remap is always on; the rail lock gates it
 refreshProfiles();
 remapRefresh();
 sync();
+drawRate();
+drawDebounce();
+tuneUpdateUI();
+document.querySelectorAll("#key-tabs .dir").forEach((b) => {
+  b.addEventListener("click", () => setKeyMode(b.dataset.mode));
+});
+$("tune-press").addEventListener("input", (e) => { TUNE.press = Number(e.target.value); tuneUpdateUI(); });
+$("tune-release").addEventListener("input", (e) => { TUNE.release = Number(e.target.value); tuneUpdateUI(); });
+$("tune-apply").addEventListener("click", tuneApply);
+$("tune-apply-all").addEventListener("click", tuneApplyAll);
+$("tune-reset-key").addEventListener("click", tuneResetKey);
+$("tune-reset-all").addEventListener("click", tuneResetAll);
 requestAnimationFrame(loop);
 
 // ---- remap UI (click-to-remap; press-to-remap needs a vendor-channel
@@ -1266,7 +1608,7 @@ function remapRefresh() {
     el.classList.remove("staged", "uploaded", "sel-source", "noremap");
     if (k.slot === FN_SLOT) el.classList.add("noremap");
     if (o !== undefined) el.classList.add(RM.uploaded[k.slot] === o ? "uploaded" : "staged");
-    if (RM.source === k.slot) el.classList.add("sel-source");
+    if (keyMode === "remap" && RM.source === k.slot) el.classList.add("sel-source");
   }
   const sel = RM.source !== null ? KBD.keys.find((k) => k.slot === RM.source) : null;
   $("remap-sel-label").textContent = sel
@@ -1358,13 +1700,14 @@ async function remapBoardReset() {
   store.profiles[store.current].keymap = {};
   rmSave(store);
   RM.source = null;
-  await remapSend(stockMap(), "board + profile reset to stock", {});
+  await remapSend(stockMap(), "stock keymap written to the board; this profile’s remaps cleared", {});
 }
 async function remapSend(map, okMsg, uploadedSnapshot) {
   if (RM.busy) return;
   RM.busy = true;
   // hard-lock everything that could interleave: controls, caps, chips
   document.querySelector(".rail").classList.add("locked");
+  $("effect-panel").classList.add("locked");
   $("board").classList.add("busy");
   $("connect").disabled = true;
   $("remap-upload").classList.add("busy");
@@ -1372,10 +1715,11 @@ async function remapSend(map, okMsg, uploadedSnapshot) {
   const unlock = () => {
     RM.busy = false;
     document.querySelector(".rail").classList.remove("locked");
+    $("effect-panel").classList.remove("locked");
     $("board").classList.remove("busy");
     $("connect").disabled = false;
     $("remap-upload").classList.remove("busy");
-    $("remap-upload").textContent = "Upload to board";
+    $("remap-upload").textContent = "Upload keymap to board";
   };
   if (simulated) {
     // no board: pretend the upload succeeded and say so
@@ -1442,6 +1786,16 @@ $("remap-reset-prof").addEventListener("click", () => {
   rmSave(s);
   RM.source = null;
   remapRefresh();
+  remapNote("this profile’s remaps cleared — board keymap unchanged", "ok");
+});
+$("reset-lighting").addEventListener("click", () => {
+  // Per-profile lighting reset: the connected-but-no-data default look.
+  S.mode = "Static"; S.b = 2; S.s = 2;
+  S.fg = "#ff0000"; S.bg = "#000000"; S.fc = false; S.dir = 0;
+  sync(); // saves the profile light and commits when connected
+  const n = $("light-note");
+  n.textContent = "lighting reset to Static · brightness 2 · speed 2";
+  n.className = "note ok";
 });
 
 // ---- WebHID transport (verified protocol: notes/10) ----
@@ -1521,6 +1875,30 @@ function onInputReport(e) {
       S.fc = d[15] === 1;
       _sync0();
     }
+  } else if (d[0] === 0x21 && d[5] === 9) {
+    // polling-rate reply (wire 0x21 sub 9): data[5]=sub, data[6]=code
+    const code = d[6];
+    if (RATES.some(([c]) => c === code)) { rateCode = code; drawRate(); }
+  } else if (d[0] === 0x21 && d[5] === 10) {
+    // debounce reply: data[6]=value (0..7 is the app range)
+    if (d[6] <= DEBOUNCE_MAX) { debounceCode = d[6]; drawDebounce(); }
+  } else if (d[0] === 0x21 && d[5] === 4) {
+    // global sensitivity anchor (0.05 mm units): sliders are 0.1 mm
+    tuneDefault = Math.max(1, Math.min(20, Math.floor((d[6] + 1) / 2)));
+    tuneUpdateUI();
+  } else if (d[0] === 0x21 && d[5] === 5) {
+    // per-key sensitivity: data[6]=override, 7=press, 8=release, 9/10=QT
+    if (TUNE.reading && TUNE.slot != null) {
+      TUNE.flag = d[6];
+      TUNE.press = d[7]; TUNE.release = d[8];
+      TUNE.qtPress = d[9]; TUNE.qtRelease = d[10];
+      TUNE.reading = false; TUNE.hasData = true;
+      tuneUpdateUI();
+    } else if (tuneBatch.length) {
+      const w = tuneBatch.shift();
+      clearTimeout(w.timer);
+      w.resolve({ flag: d[6], press: d[7], release: d[8], qtPress: d[9], qtRelease: d[10] });
+    }
   } else if (d[0] === 0x0d && d[4] > 0) {
     const csv = new TextDecoder().decode(d.subarray(5, 5 + d[4]));
     const parts = csv.split(",");
@@ -1534,16 +1912,22 @@ function onInputReport(e) {
 function setGate(kind, msg) {
   const gate = $("gate");
   const rail = document.querySelector(".rail");
+  const profiles = $("profile-bar");
+  const effect = $("effect-panel");
   const board = $("board");
   if (kind) {
     gate.hidden = false;
     gate.innerHTML = msg;
     rail.classList.add("locked");
+    profiles.classList.add("locked");
+    effect.classList.add("locked"); // Effect moved out of the rail
     board.classList.add("locked"); // caps too: remap needs a live board
   } else {
     gate.hidden = true;
     gate.innerHTML = "";
     rail.classList.remove("locked");
+    profiles.classList.remove("locked");
+    effect.classList.remove("locked");
     board.classList.remove("locked");
   }
 }
@@ -1559,6 +1943,14 @@ function enterSim() {
   setGate(null);
   $("sim-toggle").textContent = "Simulator: on";
   $("sim-toggle").dataset.on = "true";
+  // connected-but-no-data defaults: brightness 2, speed 2, polling 8K
+  S.b = 2; S.s = 2; S.fc = false;
+  rateCode = 8;
+  debounceCode = DEBOUNCE_MAX;
+  _sync0();
+  drawRate();
+  drawDebounce();
+  resetTune();
   refreshProfiles();
   remapRefresh();
 }
@@ -1570,6 +1962,11 @@ function exitSim() {
   $("sim-toggle").textContent = "Simulator";
   $("sim-toggle").dataset.on = "false";
   RM.source = null;
+  rateCode = 8;
+  debounceCode = DEBOUNCE_MAX;
+  drawRate();
+  drawDebounce();
+  resetTune();
   remapRefresh();
   setGate("warn", "<b>No keyboard connected.</b> Click Connect keyboard and pick the M68 HE to unlock the controls, or use Simulator mode.");
 }
@@ -1607,14 +2004,24 @@ async function connectHid() {
     setGate(null);
     refreshProfiles(); // hydrate the profile/remap state now that a board exists
     remapRefresh();
-    // off until the register readback answers — UI only, no commit
-    S.b = 0; S.s = 0; S.fg = "#000000"; S.bg = "#000000"; S.fc = false;
+    // connected-but-no-data defaults (user): brightness 2, speed 2,
+    // polling 8K. The register readback overwrites these when it lands.
+    // Sensitivity defaults to lowest and debounce to maximum once those
+    // controls exist (see notes/16 follow-up).
+    S.b = 2; S.s = 2; S.fc = false;
     _sync0();
+    rateCode = 8; debounceCode = DEBOUNCE_MAX;
+    drawRate(); drawDebounce(); resetTune();
     await hidSend(queryFrame(0x07, [1])); // hydrate from the register
     await hidSend(queryFrame(0x0d, []));   // device info
+    await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 9]));  // polling rate
+    await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 10])); // debounce
+    await hidSend(queryFrame(0x21, [0, 0, 0, 0x18, 4]));  // default sensitivity anchor
   } catch (e) {
     btn.textContent = "Connect failed — retry";
     btn.style.borderColor = "";
+    rateCode = 8; debounceCode = DEBOUNCE_MAX;
+    drawRate(); drawDebounce(); resetTune();
     setGate("warn", "<b>No keyboard.</b> Connect the M68 HE and click Connect again.");
     console.warn(e);
   }
@@ -1624,7 +2031,8 @@ async function disconnectHid() {
   if (!dev) return;
   try { await dev.close(); } catch {}
   dev = null; connected = false; outReport = null;
-  RM.source = null; remapRefresh();
+  RM.source = null; rateCode = 8; debounceCode = DEBOUNCE_MAX;
+  drawRate(); drawDebounce(); resetTune(); remapRefresh();
   $("connect").textContent = "Connect keyboard";
   $("connect").style.borderColor = "";
   setGate("warn", "<b>Keyboard released.</b> Click Connect keyboard to re-attach (no chooser needed).");
@@ -1634,7 +2042,8 @@ if (navigator.hid) {
   navigator.hid.addEventListener("disconnect", (e) => {
     if (e.device === dev) {
       dev = null; connected = false; outReport = null;
-      RM.source = null; remapRefresh();
+      RM.source = null; rateCode = 8; debounceCode = DEBOUNCE_MAX;
+  drawRate(); drawDebounce(); resetTune(); remapRefresh();
       $("connect").textContent = "Reconnect keyboard";
       $("connect").style.borderColor = "";
       setGate("warn", "<b>Keyboard disconnected.</b> Reconnect it and click the button.");

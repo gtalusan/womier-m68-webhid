@@ -23,7 +23,18 @@ Every claim here was observed on the real board.
 | 0x0A | light modes | 15 effect IDs + `a5 5a 04 04` |
 | 0x07 | light config | `[5]=0x0c`, register at resp[6..17] (notes/09) |
 | 0x0E | custom layout | 22 flag bytes |
-| 0x21 | HE sensitivity | `[6]=sub`, `[7]=value` |
+| 0x21 | HE params | `[6]=sub` (4=sensitivity, 9=rate, 10=anti-shake), `[7]=value` — notes/16 |
+
+HE params observed (X82HERGB/V1_11_05): sensitivity 40,
+rate code 8 (8000 Hz), anti-shake 3. Rate `set` + readback verified
+for codes 1/2/4/8 (1K/2K/4K/8K), and a 4K setting survived a physical
+replug. Per-key sensitivity read, apply, and reset were also verified on
+the board (notes/17). USB descriptors: the board is USB 2.0 HS (480 Mbps) with every
+interrupt endpoint at bInterval=1/125 µs at both 8K and 1K — the rate
+setting does not change the USB endpoint interval. Vendor query
+round-trip is also identical at 8K/1K; the keyboard IN interface is
+event-driven, so the setting most likely controls the internal HE
+scan/report cadence — notes/16.
 
 ## Mode commit + register
 

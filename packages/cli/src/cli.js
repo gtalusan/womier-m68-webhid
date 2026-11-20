@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // m68ctl — configure the Womier M68 HE from Linux.
 // Verified commands only (notes/09-session-flow.md).
-import { M68Session, CMD, buildFrame, checkResponse, hexdump, ascii, EFFECT, keymap } from "@m68/protocol";
+import { M68Session, CMD, HE_PARAM_SUB, buildFrame, checkResponse, hexdump, ascii, EFFECT, keymap } from "@m68/protocol";
 import { HidrawTransport } from "./hidraw.js";
 import { loadStore, saveStore, takeProfile, PROFILE_COUNT } from "./profiles.js";
 
@@ -45,7 +45,10 @@ usage: m68ctl <command> [args]
   side config              side light config register (raw)
   side modes               side light modes
   sleep                    sleep time (raw)
-  sensitivity [sub]        HE sensitivity (sub 4|9|10, default: all)
+  sensitivity [sub]        HE sensitivity (0x21 sub 4; sub 10 = anti-shake)
+  rate [get]               polling/report rate (0x21 sub 9): code + Hz
+  rate set <1k|2k|4k|8k>   set polling rate (vendor-app values only;
+                           live test pending — notes/16)
   layout                   custom layout support flags (raw)
   keymap show              current keymap grid + remaps for a profile
   keymap set KEY=TARGET ..  remap keys: e.g. keymap set PageUp=PrintScreen
@@ -117,6 +120,17 @@ function parseTarget(s) {
   if (hex) return parseInt(hex[1], 16);
   if (/^\d+$/.test(s)) return parseInt(s, 10);
   return undefined;
+}
+
+/** Polling-rate spec → the app's wire code (1=1K, 2=2K, 4=4K, 8=8K).
+ *  Accepts 1k/2k/4k/8k (optionally suffixed "hz") and 1000/2000/4000/8000. */
+const RATE_CODES = Object.freeze({
+  "1k": 1, "2k": 2, "4k": 4, "8k": 8,
+  1000: 1, 2000: 2, 4000: 4, 8000: 8,
+});
+function parseRateCode(s) {
+  if (s === undefined) return undefined;
+  return RATE_CODES[String(s).toLowerCase().replace(/hz$/, "")];
 }
 
 /** Physical-key name/alias → matrix slot. */
@@ -407,12 +421,32 @@ async function main() {
     }
 
     case "sensitivity": {
-      const subs = args.length ? [parseInt(args[0], 16)] : [4, 9, 10];
-      await withSession(async (s) => {
-        for (const sub of subs) {
-          out({ sub, ...(await s.sensitivity(sub)) });
+      // Sub 4 is sensitivity; sub 9 is the polling rate (use `rate`),
+      // sub 10 is anti-shake. Keep the raw sub escape hatch.
+      const sub = args.length ? Number(args[0]) : HE_PARAM_SUB.SENSITIVITY;
+      if (!Number.isInteger(sub)) fail(`invalid HE sub-param "${args[0]}"`);
+      await withSession(async (s) => out({ sub, ...(await s.heParam(sub)) }));
+      break;
+    }
+
+    case "rate": {
+      const sub = args[0] ?? "get";
+      if (sub === "get") {
+        await withSession(async (s) => out(await s.rate()));
+      } else if (sub === "set") {
+        const spec = args[1];
+        const code = parseRateCode(spec);
+        if (code === undefined) {
+          const hz = String(spec ?? "").toLowerCase().replace(/hz$/, "");
+          if (["125", "250", "500"].includes(hz)) {
+            fail(`the vendor app exposes only 1K/2K/4K/8K; ${hz} Hz is untested (notes/16)`);
+          }
+          fail("usage: m68ctl rate set <1k|2k|4k|8k>");
         }
-      });
+        await withSession(async (s) => out(await s.setRate(code)));
+      } else {
+        fail(`unknown rate subcommand "${sub}" (use: rate [get] | rate set <1k|2k|4k|8k>)`);
+      }
       break;
     }
 
@@ -595,8 +629,10 @@ async function main() {
         }
         console.log("== 4. light config (0x07) ==");
         console.log(`   ${JSON.stringify(await s.lightConfig())}`);
-        console.log("== 5. HE sensitivity (0x21) ==");
-        for (const sub of [4, 9, 10]) console.log(`   ${JSON.stringify(await s.sensitivity(sub))}`);
+        console.log("== 5. HE parameters (0x21) ==");
+        console.log(`   sensitivity: ${JSON.stringify(await s.heParam(HE_PARAM_SUB.SENSITIVITY))}`);
+        console.log(`   rate:        ${JSON.stringify(await s.rate())}`);
+        console.log(`   anti-shake:  ${JSON.stringify(await s.heParam(HE_PARAM_SUB.ANTI_SHAKE))}`);
       } finally {
         s.close();
       }

@@ -1,6 +1,6 @@
 # 11 — Key bindings / remapping: verified spec (RE'd from the binaries)
 
-## STATUS (2026-11-19) — 0x18 wire-validated (usb7.log)
+## STATUS — 0x18 wire-validated (usb7.log)
 
 The Download-button capture (usb7.log, same WinDbg method as usb3–6)
 landed with the goal binding set. The upload is now wire-validated.
@@ -33,7 +33,7 @@ Corrections to the RE'd framing below, proven by the capture:
   (10 segments × 256 B) and 0x22 (40 × 50 B = 2000 B). Purpose
   uncharacterized (macro/text/aux data) — all zeros with no bindings.
 
-**Second capture (usb8.log, 2026-11-19) resolves [2]:** with profile 2
+**Second capture (usb8.log) resolves [2]:** with profile 2
 active, the user set PgDn→Home + Insert→F12 and re-captured. seg[0]
 now carries profile 2's map — and profile 1's PgUp→PrtSc is **gone
 from the wire** (slot 82 back to 0x4B). seg[2] is byte-identical to
@@ -56,7 +56,7 @@ Still open, unrelated thread: **mode-icon UI swap** (pure frontend —
 icons in `web/assets/icons/` + `web/assets/resource-map.json`; see
 below).
 
-Implementation — **DONE, both surfaces (2026-11-19):**
+Implementation — **DONE, both surfaces:**
 - CLI: `keymap show|set|reset|upload`, `profile list|use|current|
   import|export`, media/mouse targets — full Download replay
   live-verified (PgUp→PrtSc works + persists; Insert=Play/Pause
@@ -69,7 +69,7 @@ Implementation — **DONE, both surfaces (2026-11-19):**
 - ALL operateType entry encodings RE'd from the Download compiler
   (FUN_00471ce0): notes/14.
 
-Five parallel Ghidra passes (2026-11-17) decoded the binding system.
+Five parallel Ghidra passes decoded the binding system.
 All claims below are verified in M68.exe / witmodSdk.dll disassembly
 unless marked inferred.
 
@@ -160,7 +160,7 @@ Verified framing from the app's own Download path
 
 ## What remains unverified
 
-The 0x18 upload is captured firing twice (usb7 + usb8, 2026-11-19) —
+The 0x18 upload is captured firing twice (usb7 + usb8) —
 see the wire spec at the top of this file. Still open: the contents
 of 0x19/0x22 when non-empty (macro/DKS content — the bank builders
 FUN_0047c4d0/FUN_0047d380 are not decoded), combo/shortcut/disable/

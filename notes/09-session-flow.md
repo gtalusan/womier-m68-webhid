@@ -26,7 +26,7 @@ entry encodings).)
 | SN | `01 15 00…` → hex-ASCII serial | ✅ |
 | Light config query | `01 07 01 00…` → 12-byte register | ✅ |
 | Mode list | `01 0a 00…` → 15 ids + `a5 5a 04 04` | ✅ |
-| Other queries | 0x08 (side cfg), 0x21×3 (HE sens), 0x02 (side modes), 0x0e (layout), 0x14 (sleep) | ✅ device answered |
+| Other queries | 0x08 (side cfg), 0x21×3 (HE params: sensitivity 4, rate 9, anti-shake 10 — notes/16), 0x02 (side modes), 0x0e (layout), 0x14 (sleep) | ✅ device answered |
 | Sync-ish 0x17 | `01 17 00 00 00 01 01` — sent at session start and re-sent every ~150 chunks | ⚠️ observed in transcripts; its effect was never isolated |
 | Keepalive 0x01 | `01 01 00 00 00 01` — every ~59 chunks | ⚠️ observed; device ACKs with echo 0x01; purpose unverified |
 | Stream 0x0F | `01 0f <group> 00 <chunk> <len> <data…>` — kbd group 0: 8 chunks (7×54B + 18B); side group 1: 54B + 45B; RGB data; one chunk per second | ✅ board renders it LIVE while streaming; reverts to committed state on clean stop |
@@ -60,7 +60,7 @@ Brightness/speed carry the raw slider values (Qt default 0..99).
 ## Mode table
 
 Wire mode ids = the app's INTERNAL effect ids (definitively verified
-2026-11-17: the real Windows app's Neon commit wrote 0x03 and the
+The real Windows app's Neon commit wrote 0x03 and the
 device renders it as Neon — notes/10, where EVERY id below has an
 app-register anchor):
 

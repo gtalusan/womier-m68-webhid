@@ -1,6 +1,6 @@
 # 15 — Macros: how they work + implementation plan
 
-Status: DECODED (2026-11-19) — the macro/DKS content formats and the
+Status: DECODED — the macro/DKS content formats and the
 full Download pipeline are asm-verified (notes/14). Remaining:
 wire-validation with a real macro, then the CLI/webapp compilers.
 

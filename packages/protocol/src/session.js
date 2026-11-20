@@ -5,7 +5,7 @@
 //   read(timeoutMs): Promise<Buffer>      — read one 64-byte report
 //   close(): void
 import { buildFrame, checkResponse } from "./frame.js";
-import { CMD } from "./commands.js";
+import { CMD, HE_PARAM_SUB } from "./commands.js";
 import { stockKeymap } from "./keymap.js";
 import * as decode from "./decode.js";
 
@@ -182,9 +182,46 @@ export class M68Session {
     return decode.decodeSleep(resp);
   }
 
+  /** Raw HE parameter query (wire 0x21 [5]=0x18 [6]=sub). Sub 4 is
+   *  sensitivity, 9 is polling rate, 10 is anti-shake — not the same
+   *  setting; see notes/16. */
+  async heParam(sub) {
+    const resp = await this.cmd(CMD.HE_PARAM, [0, 0, 0, 0x18, sub], CMD.HE_PARAM);
+    return decode.decodeHeParam(resp);
+  }
+
+  /** Back-compat alias for heParam (the old name was too narrow). */
   async sensitivity(sub) {
-    const resp = await this.cmd(CMD.HE_SENSITIVITY, [0, 0, 0, 0x18, sub], CMD.HE_SENSITIVITY);
-    return decode.decodeSensitivity(resp);
+    return this.heParam(sub);
+  }
+
+  /** Current polling/report rate (0x21 sub 9) — "Rate return" in the app. */
+  async rate() {
+    const resp = await this.cmd(
+      CMD.HE_PARAM,
+      [0, 0, 0, 0x18, HE_PARAM_SUB.RATE],
+      CMD.HE_PARAM,
+    );
+    return decode.decodeRate(resp);
+  }
+
+  /**
+   * Set polling/report rate. `code` is the vendor app's wire code:
+   * 1=1K, 2=2K, 4=4K, 8=8K (the app labels these "1K".."8K").
+   * The vendor setter is `01 21 00 00 00 18 09 01 <code>`; it does
+   * not read a reply. We best-effort drain an ACK. Live behavior
+   * (ACK timing, persistence) is TODO — notes/16.
+   */
+  async setRate(code) {
+    if (!decode.RATE_HZ_BY_CODE[code]) {
+      throw new Error("rate code must be 1, 2, 4, or 8 (1K/2K/4K/8K)");
+    }
+    await this.t.write(
+      buildFrame(CMD.HE_PARAM, [0, 0, 0, 0x18, HE_PARAM_SUB.RATE, 1, code]),
+    );
+    await sleep(300);
+    await this.drain(1, 500); // consume the setter ACK if the device sends one
+    return { code, hz: decode.RATE_HZ_BY_CODE[code] };
   }
 
   /**
@@ -255,10 +292,10 @@ export class M68Session {
   /** Read and discard reports until one read times out (best-effort
    *  ACK drain after uploads; whether the device ACKs 0x18 is probe
    *  P0 — notes/12). Capped so a chatty device can't stall us. */
-  async drain(maxReads = 150) {
+  async drain(maxReads = 150, timeoutMs = 100) {
     for (let i = 0; i < maxReads; i++) {
       try {
-        await this.t.read(100);
+        await this.t.read(timeoutMs);
       } catch {
         return;
       }

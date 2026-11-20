@@ -68,7 +68,7 @@ QSliders, and no QSlider::setRange exists in the binary) emit these
 
 ## Mode ID table — the wire carries the app's INTERNAL ids
 
-**Definitively verified (2026-11-17):** the real Windows app was set to
+**Definitively verified:** the real Windows app was set to
 NEON (full color, brightness step 2, speed step 4) and the device
 register read back `03 01 03 ff0000 000000 00 01` — i.e. the app wrote
 **mode 0x03** for Neon, brightness/speed as raw 0-indexed step values
@@ -87,9 +87,9 @@ Wire mode ids = the app's internal ids from `FUN_004a8b40`:
 ```
 
 App-register-verified anchors: **Static=0x00** (original anchor),
-**Breath=0x01** (2026-11-17: the app's Breath commit read back
+**Breath=0x01** (the app's Breath commit read back
 `01 04 03 ff 00 00 00 00 ff 00 00 00` — b=4, s=3, fg red, bg blue, no
-full color), **Neon=0x03** (same day, see above), **Wave=0x02**
+full color), **Neon=0x03** (see above), **Wave=0x02**
 (`02 02 02 ff 00 00 00 00 00 00 04 01` — outward, full color),
 **Twinkle=0x09** (`09 02 02 ff 00 00 00 00 00 00 00 01` — full control
 set: b, s, fg, bg, full color; no direction),
@@ -143,7 +143,7 @@ upload builder — FUN_0047bc70 / FUN_00471ce0 — turned out to be the
 **keymap/DKS Download** path, not a light path; fully decoded in
 notes/11 + notes/14 — no lights persistence was ever seen.)
 
-**Power/persistence model (live-verified 2026-11-17):**
+**Power/persistence model (live-verified):**
 
 - The 0x07 commit **persists across clean power cycles** (Static blue
   survived an unplug/replug with the device idle).
@@ -177,7 +177,7 @@ dims the streamed colors by the commit brightness (b=2 → 0.556×).
 CLI: `light custom-stream --xml <profile.xml> [--index 0-4]
 [--color RRGGBB] [--brightness 0-4]` — parses the customLed node,
 commits Custom (0x0a), streams the grid every ~1.2 s until Ctrl-C.
-Live-verified 2026-11-17: green Alphabets from Profile2.xml rendered
+Live-verified: green Alphabets from Profile2.xml rendered
 on the board. The XML is fully data-driven — custom3/4/5 are empty
 canvases; any pattern with keyCode/indexX/indexY/colorR/G/B works.
 
@@ -192,11 +192,11 @@ Response `01 07 00 00 00 0c 00 04 03 f2 55 ff …` — resp[5]=0x0c is the
 payload **length** (12, same convention as the mode-list response); the
 register at resp[6..17] mirrors the commit fields:
 `[6]=mode, [7]=brightness, [8]=speed, [9..11]=fg, [12..14]=bg,
-[15]=direction, [16]=fullcolor, [17]=reserved`. (Live-verified
-2026-11-17: the device read back mode/brightness/speed/fg/bg exactly as
+[15]=direction, [16]=fullcolor, [17]=reserved`. (Live-verified:
+the device read back mode/brightness/speed/fg/bg exactly as
 committed, incl. direction and the full-color flag.)
 
-## NEON specifics (app + device verified 2026-11-17)
+## NEON specifics (app + device verified)
 
 - mode byte = **0x03** (the real app's register write; the device
   renders it as the Neon cycling)
@@ -218,7 +218,7 @@ committed, incl. direction and the full-color flag.)
 - fg → frame[9..11], bg → frame[12..14] (both mirrored in the
   register)
 
-## Mode behavior classes (user-observed 2026-11-17)
+## Mode behavior classes (user-observed)
 
 - **Always-on animations**: Static, Breath, Wave, Neon, Twinkle,
   Radar, Auto Ripple, Striation.

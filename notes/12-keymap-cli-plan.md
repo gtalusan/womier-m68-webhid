@@ -1,10 +1,10 @@
 # 12 — Keymap CLI: feasibility plan (profile-aware m68ctl)
 
-Status: IMPLEMENTED (2026-11-19) — CLI + web UI land; P2 closed, P0/P1
+Status: IMPLEMENTED — CLI + web UI land; P2 closed, P0/P1
 still open. Wire spec for the keymap upload is wire-validated
 (usb7/usb8 — see notes/11 STATUS).
 
-**Implementation log (live-verified 2026-11-19):**
+**Implementation log (live-verified):**
 - **Web app (same day):** click-to-remap with key/media/mouse target
   tray, per-profile tabs (keymap + light, fresh profiles default to
   Static black), export/import (JSON + the app's Profile XML),
@@ -16,7 +16,7 @@ still open. Wire spec for the keymap upload is wire-validated
   `Insert=ScrollUp/Down` scrolls and `Insert=LeftClick` clicks.
   CLI targets: `Play/Pause`, `Mute`, `Vol+/-`, `ScrollUp`…
 
-**Implementation log (live-verified 2026-11-19):**
+**Implementation log (live-verified):**
 - **Full Download replay WORKS on the board** — `keymap set
   PageUp=PrintScreen --profile 0 --upload` → PgUp types PrtSc, and
   it persists across replug. First CLI-driven key remap.
@@ -25,8 +25,8 @@ still open. Wire spec for the keymap upload is wire-validated
   minimal→test→replug). If seg[0] alone commits + persists, the
   upload drops from ~17 s to ~4 s.
 - `--profile` stripping had a const-reassignment bug on all `light`
-  commands (fixed 2026-11-19).
-**Profile model (final, 2026-11-19):** P2 closed — a board-side
+  commands (fixed).
+**Profile model (final):** P2 closed — a board-side
 profile switch left every known register byte-identical, so the
 device has no observable profile state. **Profiles are an XML
 concept only**: `--profile` applies to `keymap`/`profile` commands
@@ -122,7 +122,7 @@ profile import <file>|export <file>  the app's Profile XML format
 light … [--profile N]                store/commit light config per profile
 ```
 
-- `--profile` numbering: **0-based** (user decision 2026-11-19):
+- `--profile` numbering: **0-based** (user decision):
   CLI 0/1/2 = the app's profiles 1/2/3. Default: **0 (profile 1)**
   unless probe P2 finds a profile register — then `profile current`
   reads it and omitted `--profile` means "current" (the user's
@@ -150,7 +150,7 @@ light … [--profile N]                store/commit light config per profile
   (seg[0] only). The clean isolation test is still to run:
   reset→stock→replug→minimal→test→replug. If seg[0] alone commits +
   persists, the upload drops from ~17 s to ~4 s.
-- **P2 — profile register hunt:** CLOSED (2026-11-19). Board-side
+- **P2 — profile register hunt:** CLOSED. Board-side
   profile switch left every known register byte-identical — no
   device-side profile state. `--profile` defaults to the store's
   current (0).

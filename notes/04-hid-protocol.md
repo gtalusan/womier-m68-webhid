@@ -52,7 +52,7 @@ wire 0x40–0x49; app 0x26→0x1E, 0x27→0x1F, 0x28→0x20, 0x29→0x21,
 | 0x08 | side light config | `[2]=1` → same register shape |
 | 0x0E | custom layout support | 22 flag bytes |
 | 0x14 | sleep time | `[2]=2` → sleep minutes |
-| 0x21 | HE sensitivity | `[5]=0x18`, `[6]=4/9/10` |
+| 0x21 | HE params | `[5]=0x18`, `[6]=sub`: 4=sensitivity, 9=**polling rate**, 10=anti-shake (5/6=dynamic/default sensitivity, statically RE'd). Query `[7]=0`; set `[7]=1 [8]=value` — notes/16 |
 
 ### Lighting
 

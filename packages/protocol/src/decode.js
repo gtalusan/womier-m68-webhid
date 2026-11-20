@@ -76,9 +76,24 @@ export function decodeSleep(resp) {
   return { fields: Buffer.from(resp.subarray(6, 6 + 8)).toString("hex") };
 }
 
-/** HE sensitivity (0x21 [5]=0x18 [6]=sub): [7]=value. */
-export function decodeSensitivity(resp) {
+/** Raw HE parameter reply (0x21 [5]=0x18 [6]=sub): raw[6]=sub, raw[7]=value. */
+export function decodeHeParam(resp) {
   return { sub: resp[6], value: resp[7] };
+}
+
+/** Rates the vendor app's "Rate return" slider exposes, by wire code. */
+export const RATE_HZ_BY_CODE = Object.freeze({ 1: 1000, 2: 2000, 4: 4000, 8: 8000 });
+
+/** Polling/report rate reply (0x21 sub 9). Code 1/2/4/8 = 1K/2K/4K/8K. */
+export function decodeRate(resp) {
+  const { sub, value } = decodeHeParam(resp);
+  if (sub !== 9) throw new Error(`expected HE sub-param 9 (rate), got ${sub}`);
+  return { sub, code: value, hz: RATE_HZ_BY_CODE[value] ?? null };
+}
+
+/** @deprecated Use decodeHeParam — wire 0x21 is not sensitivity-only. */
+export function decodeSensitivity(resp) {
+  return decodeHeParam(resp);
 }
 
 /** Parse one <customLed index="N"> node from a profile XML. */

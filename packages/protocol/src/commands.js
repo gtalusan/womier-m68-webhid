@@ -18,7 +18,8 @@ export const CMD = Object.freeze({
   SIDE_LIGHT_MODE_LIST: 0x02,
   CUSTOM_LAYOUT_SUPPORT: 0x0e,
   SLEEP_TIME: 0x14, // [2]=2 query
-  HE_SENSITIVITY: 0x21, // [5]=0x18, [6]=sub (3=calibrate, 4/9/10=query)
+  HE_PARAM: 0x21, // [5]=0x18, [6]=sub (see HE_PARAM_SUB); query [7]=0, set [7]=1 [8]=value
+  HE_SENSITIVITY: 0x21, // deprecated alias — 0x21 carries rate/anti-shake too, not just sensitivity
   // --- observed in the app's transcripts; roles not fully isolated ---
   KEEPALIVE: 0x01, // "ShakeHands": [5]=1, device ACKs echo 0x01; app sends it ~every 59 chunks
   LIGHT_SYNC: 0x17, // [5]=1 [6]=1; app sends at session start + ~every 150 chunks
@@ -29,6 +30,18 @@ export const CMD = Object.freeze({
   ONBOARD_DATA: 0x18, // compiled 132-entry keymap; [2]=seg(0=active map,2=pristine), [4]=pkt#, [5]=len
   SENIOR_KEY: 0x19, // SeniorKey/DKS banks (app 0x18); 10 segs × 256 B, zeros = unused
   KEYMAP_AUX: 0x22, // app 0x2A; 40 × 50 B = 2000 B, all-zero — role unknown, replayed verbatim
+});
+
+/**
+ * Sub-parameter carried in wire 0x21 byte [6] (app cmd 0x29).
+ * Query shape: [5]=0x18, [6]=sub, [7]=0 → reply raw[6]=sub, raw[7]=value.
+ * Set shape:   [5]=0x18, [6]=sub, [7]=1, [8]=value (rate/anti-shake;
+ *              statically RE'd from M68.exe — notes/16).
+ */
+export const HE_PARAM_SUB = Object.freeze({
+  SENSITIVITY: 4, // HE sensitivity (read-only query in our code)
+  RATE: 9, // polling/report rate: 1=1K, 2=2K, 4=4K, 8=8K (KB/Hz code, not Hz)
+  ANTI_SHAKE: 10, // key anti-shake
 });
 
 /**
