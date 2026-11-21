@@ -166,6 +166,7 @@ Full method, disassembly, and caveats: **notes/18**.
 - [16 — Polling/report rate (0x21 sub 9)](notes/16-polling-rate.md)
 - [17 — HE tuning: sensitivity + debounce](notes/17-he-tuning.md)
 - [18 — Win32 target & WinDbg capture method](notes/18-win32-windbg-capture.md)
+- [19 — DKS (Senior Keys): decoded model + wire format](notes/19-dks.md)
 
 ## Software
 

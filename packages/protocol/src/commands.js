@@ -28,8 +28,8 @@ export const CMD = Object.freeze({
                     // streaming; reverts to the committed state on stop
   // --- keymap Download upload (wire-validated, usb7/usb8 — notes/11) ---
   ONBOARD_DATA: 0x18, // compiled 132-entry keymap; [2]=seg(0=active map,2=pristine), [4]=pkt#, [5]=len
-  SENIOR_KEY: 0x19, // SeniorKey/DKS banks (app 0x18); 10 segs × 256 B, zeros = unused
-  KEYMAP_AUX: 0x22, // app 0x2A; 40 × 50 B = 2000 B, all-zero — role unknown, replayed verbatim
+  SENIOR_KEY: 0x19, // macro-data list (app 0x18); 10 slots × 256 B — NOT DKS (notes/14)
+  KEYMAP_AUX: 0x22, // app 0x2A; DKS/SeniorKey store, 40 slots × 50 B (notes/14, 19)
 });
 
 /**

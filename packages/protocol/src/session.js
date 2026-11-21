@@ -229,8 +229,8 @@ export class M68Session {
    * (usb7/usb8.log — wire-validated, notes/11):
    *   0x18 seg[0] = the active profile's keymap (132 entries)
    *   0x18 seg[2] = pristine default keymap
-   *   0x19 = SeniorKey/DKS banks (10 segs × 256 B; zeros = unused)
-   *   0x22 = 40 × 50 B (2000 B; role unknown, replayed as zeros)
+   *   0x19 = macro-data list (10 slots × 256 B; zeros = unused)
+   *   0x22 = DKS/SeniorKey store (40 slots × 50 B; zeros = unused)
    * Packet framing for all three: [2]=seg/idx, [3]=0, [4]=packet#,
    * [5]=chunk len, [6..]=chunk. 0x18 carries 14 entries (56 B) per
    * packet, last packet 6 entries (24 B).

@@ -720,8 +720,9 @@ function centerOf(r, c) { return KEYCENTER.get(r * 22 + c) ?? null; }
 // HID usage id, 0 = empty slot. ONE exception: slot 121 (Fn) is the
 // marker `01 00 00 00` — preserved verbatim, not remappable.
 // A remap = replace a slot's keyCode with the target's; the app always
-// uploads the full map + a pristine copy + two zero banks (0x19 DKS,
-// 0x22 aux). This replays that sequence byte-for-byte.
+// uploads the full map + a pristine copy + two zero banks (0x19 macro
+// list, 0x22 DKS store — notes/14). This replays that sequence
+// byte-for-byte.
 const FN_SLOT = 121;
 const REMAP_NAMES = {
   0x04:"A",0x05:"B",0x06:"C",0x07:"D",0x08:"E",0x09:"F",0x0a:"G",0x0b:"H",0x0c:"I",0x0d:"J",
