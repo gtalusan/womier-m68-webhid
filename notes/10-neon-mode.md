@@ -134,9 +134,9 @@ profile XML; the pattern reaches the device via the LIVE 0x0f stream
 (app-side per-key grid), not a persisted upload.
 
 **The custom layer is RAM-only (capture-verified):** two WinDbg
-captures of the app (usb5/usb6 logs — checkbox flips AND a full
-profile switch) contain ZERO 0x18 "Write Onboard-data" frames, only
-0x0f preview streams. The app's persisted state is the 0x07 commit
+captures of the app (checkbox flips AND a full profile switch) contain
+ZERO 0x18 "Write Onboard-data" frames, only 0x0f preview streams. The
+app's persisted state is the 0x07 commit
 (mode 0x0a); the custom pattern colors live in device RAM, streamed
 while the Custom dialog is open, lost on power cycle. (The 0x18
 upload builder — FUN_0047bc70 / FUN_00471ce0 — turned out to be the
@@ -167,7 +167,7 @@ notes/11 + notes/14 — no lights persistence was ever seen.)
   custom-light editor's save action — never seen in our captures).
   Until then: custom patterns are live-only (`light custom-stream`).
 
-**The stream (usb6-verified):** group 0 = keyboard 132 slots × RGB
+**The stream (capture-verified):** group 0 = keyboard 132 slots × RGB
 (396 B, chunks 0..7 = 7×54+18), group 1 = side 33 slots (99 B, chunks
 0..1). Slot = row*22+col = the XML indexX/indexY. Startup: side grid
 (chunk0 ×2 + chunk1) → keepalive `01 01 00 00 00 01` → light-sync

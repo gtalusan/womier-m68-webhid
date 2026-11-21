@@ -36,10 +36,9 @@ wire-validation with a real macro, then the CLI/webapp compilers.
 ## Implementation plan
 
 1. **Wire validation (one capture)**: record a macro in the app's
-   macro editor (SDK exports prove it exists), Download under WinDbg
-   (usb9.log), diff against the decoded format. Also settles the
-   delay units (ms vs 10ms) by comparing recorded values to emitted
-   bytes.
+   macro editor (SDK exports prove it exists), Download under WinDbg,
+   diff against the decoded format. Also settles the delay units (ms vs
+   10ms) by comparing recorded values to emitted bytes.
 2. **CLI**: macro DSL (steps + delays + repeat) compiling to the
    248-byte content + slot allocator; extend `keymap upload` to
    include the macro bank (10 slots, zero-filled) and DKS bank

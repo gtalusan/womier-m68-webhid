@@ -43,7 +43,7 @@ The one command that matters: `01 07 00 00 00 0e <mode> <brightness>
 full verified layout, mode table, and register format live in
 notes/09 (canonical).
 
-## Per-key grid stream (0x0F) — usb6-verified framing
+## Per-key grid stream (0x0F) — capture-verified framing
 
 Startup (from the app's own capture): side grid (chunk 0 twice +
 chunk 1) → keepalive `01 01 00 00 00 01` → light-sync

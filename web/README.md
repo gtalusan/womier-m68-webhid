@@ -45,12 +45,16 @@ enable Pages on the repo).
 
 ## Protocol credits
 
-The wire protocol was reverse-engineered from the vendor's Windows app
-(M68.exe + witmodSdk.dll) and verified live against the device: every
-mode ID, the frame layout (mode/brightness/speed/fg/bg/direction/
-full-color in one 64-byte report), the direction maps, and the register
-readback format were confirmed by reading the keyboard's own register
-after the vendor app committed each mode.
+The wire protocol was reverse-engineered from the vendor's **32-bit
+Win32** app (`M68.exe` + the 32-bit `witmodSdk.dll`) and verified live
+against the device. The app was run under x86 WinDbg with a breakpoint
+on the SDK's single report-write wrapper (`witmodSdk+343f`), dumping
+each 64-byte buffer with `db poi(esp+4) L40` (method:
+[notes/18](../notes/18-win32-windbg-capture.md)). Every mode ID, the
+frame layout (mode/brightness/speed/fg/bg/direction/full-color in one
+64-byte report), the direction maps, and the register readback format
+were confirmed by reading the keyboard's own register after the vendor
+app committed each mode.
 
 ## Assets
 

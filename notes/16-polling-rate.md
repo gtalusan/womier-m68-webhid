@@ -38,7 +38,7 @@ reply:  … bytes 6=09, 7=<code> …       (response shape: notes/08)
 - `[5]=0x18`, `[6]=9` (sub-param), `[7]=0` query / `1` set,
   `[8]=code` (1/2/4/8 = 1K/2K/4K/8K).
 - The app sends the query at connect alongside sensitivity (`[6]=4`)
-  and anti-shake (`[6]=0x0a`): usb3.log lines 51–61, usb7.log.
+  and anti-shake (`[6]=0x0a`): seen in the lighting and keymap captures.
 - Response parser: `M68.exe` FUN_00460630, branch `raw[1] == 0x21`,
   `raw[6] == 9` → `raw[7]` = code (FUN_00413b40 stores it).
 

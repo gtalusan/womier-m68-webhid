@@ -1,9 +1,10 @@
 # M68 HE — cross-platform configuration project
 
 Reverse-engineered the Womier M68 HE (VID 0416 / PID 7372, Nuvoton M484,
-board `X82HERGB`, FW V1_11_05) config protocol from the Windows-only
-software, and built two working configurators: a **browser web app**
-(any OS, no install) and a **Linux CLI**.
+board `X82HERGB`, FW V1_11_05) config protocol from the vendor's
+Windows-only **32-bit Win32** app (`M68.exe` + `witmodSdk.dll`), and
+built two working configurators: a **browser web app** (any OS, no
+install) and a **Linux CLI**.
 
 ## The web app — `web/`
 
@@ -123,6 +124,28 @@ return 0xffffffff;               /* Init fails — no device */
 This project's own tools are unaffected — `m68ctl` and the web app
 implement the protocol directly and never load the SDK.
 
+## Target platform & capture method
+
+The vendor software is a **32-bit Win32 app**: `M68.exe` is PE32 GUI
+**i386** (Qt 5), `witmodSdk.dll` is 32-bit (preferred image base
+`0x10000000`), and it installs under `C:\Program Files (x86)\M68\`.
+The RE tooling follows from that — x86 WinDbg, 32-bit RVAs, and
+stack-based function arguments.
+
+We captured every config report the app writes by breaking on the SDK's
+single report-write wrapper and dumping the buffer through the stack
+pointer:
+
+```
+bp witmodSdk+343f "db poi(esp+4) L40; g"
+```
+
+`+0x343f` is the `call WriteFile` in `FUN_100033d0`; at the breakpoint
+the stdcall arguments are on the stack, so `[esp+4]` is `lpBuffer` and
+`L40` dumps the 64-byte report. `.logopen` recorded each hit. The
+resulting WinDbg transcripts are what the protocol notes cite.
+Full method, disassembly, and caveats: **notes/18**.
+
 ## Notes
 
 - [01 — Installer & unpacking](notes/01-installer.md)
@@ -142,6 +165,7 @@ implement the protocol directly and never load the SDK.
 - [15 — Macros plan](notes/15-macros-plan.md)
 - [16 — Polling/report rate (0x21 sub 9)](notes/16-polling-rate.md)
 - [17 — HE tuning: sensitivity + debounce](notes/17-he-tuning.md)
+- [18 — Win32 target & WinDbg capture method](notes/18-win32-windbg-capture.md)
 
 ## Software
 

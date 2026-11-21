@@ -1,9 +1,9 @@
 # 09 — Verified protocol (ground truth only)
 
 Everything below is verified by at least one of: the WinDbg wire
-transcripts of the real app (`~/Downloads/usb3.log`, `usb4.log`), the
-device's own responses/register mirrors, or direct observation of the
-board. Speculation is called out explicitly.
+transcripts of the real app, the device's own responses/register
+mirrors, or direct observation of the board. Speculation is called out
+explicitly.
 
 (This note covers the lighting session. Key bindings/remapping live
 in notes/11 (wire-validated upload spec) and notes/14 (all operateType
@@ -14,9 +14,11 @@ entry encodings).)
 - 64-byte reports: `[0]=report ID 1`, `[1]=wire command`, `[2..63]=payload`.
 - **65-byte writes wedge the firmware's OUT endpoint** (verified in
   usbmon; every wedge in this project traced to a 65-byte frame).
-- All device writes go through the SDK's single `WriteFile` site
-  (`witmodSdk.dll + 0x343f`) — the WinDbg transcripts captured
-  everything the app ever writes.
+- Normal report writes all go through the SDK's single `WriteFile`
+  wrapper (`witmodSdk.dll + 0x343f`, inside `FUN_100033d0`) — the
+  WinDbg transcripts captured everything the app writes on the config
+  paths. (The firmware flasher has its own direct `WriteFile` calls;
+  notes/05. Capture method: notes/18.)
 
 ## Session sequence (from the transcripts, in order)
 

@@ -2,7 +2,8 @@
 
 `witmodSdk.dll` = the vendor SDK ("Witmod" ≈ Womier module). C ABI
 (`__cdecl`), exports grouped by prefix. All addresses are image RVAs
-(preferred image base 0x10000000, DLL is 32-bit).
+(preferred image base 0x10000000, DLL is 32-bit — the whole target is
+32-bit Win32; see notes/18 for the platform and WinDbg capture method).
 
 ## HID / device layer (`CWitmodHid_*`)
 

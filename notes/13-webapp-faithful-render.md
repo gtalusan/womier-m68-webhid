@@ -30,7 +30,7 @@ gb18030) = the app's per-key layout table:
 
 Wire-slot mapping: slot = wire_row*22 + col, wire_row = app row − 1
 (Row02..06 → rows 1..5). Verified: Esc=22, Q=45, PgUp=104, Fn=121,
-Right=126 — matches the CLI keymap and the usb7/usb8 keymap decode.
+Right=126 — matches the CLI keymap and the keymap-capture decode.
 
 ## The web app now
 
@@ -93,7 +93,7 @@ gradient + additive glow. Geometry is exact.
 press-to-remap loop is shelved. The remaining lead (unpursued): the
 app's 0x04/0x05 "Six Key" echo proves key reports reach the app
 somewhere — probably gated by a trigger sent when its custom-keys
-page opens (never captured; a usb9.log of that page would show it).
+page opens (never captured; a capture of that page would show it).
 
 **Shipped instead: click-to-remap** on the faithful render —
 `Remap: on` chip → click a cap (amber) → pick a target from the
@@ -104,8 +104,8 @@ replays the byte-verified Download sequence (0x18 seg0+seg2 @400ms,
 0x19 ×10, 0x22 ×40 @100ms) with a progress bar and a
 never-unplug-mid-upload warning. Fn is locked (marker slot).
 `stockMap()`/`applyRemaps()` in the webapp are byte-identical to
-usb7 seg[2]/seg[0]. Swap had a read-after-write bug (both sides
-took B's action) — fixed and re-verified.
+the keymap capture's seg[2]/seg[0]. Swap had a read-after-write bug
+(both sides took B's action) — fixed and re-verified.
 
 ## Later the same day (post-commit rounds)
 

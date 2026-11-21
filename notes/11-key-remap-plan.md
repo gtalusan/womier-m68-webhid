@@ -1,8 +1,8 @@
 # 11 — Key bindings / remapping: verified spec (RE'd from the binaries)
 
-## STATUS — 0x18 wire-validated (usb7.log)
+## STATUS — 0x18 wire-validated (WinDbg capture)
 
-The Download-button capture (usb7.log, same WinDbg method as usb3–6)
+The Download-button capture (same WinDbg method as the earlier captures)
 landed with the goal binding set. The upload is now wire-validated.
 Corrections to the RE'd framing below, proven by the capture:
 
@@ -33,12 +33,12 @@ Corrections to the RE'd framing below, proven by the capture:
   (10 segments × 256 B) and 0x22 (40 × 50 B = 2000 B). Purpose
   uncharacterized (macro/text/aux data) — all zeros with no bindings.
 
-**Second capture (usb8.log) resolves [2]:** with profile 2
+**A second capture resolves [2]:** with profile 2
 active, the user set PgDn→Home + Insert→F12 and re-captured. seg[0]
 now carries profile 2's map — and profile 1's PgUp→PrtSc is **gone
 from the wire** (slot 82 back to 0x4B). seg[2] is byte-identical to
-usb7's seg[2] — later decode shows it is the **FN layer** (an
-unedited layer, hence the "pristine" look). So the app's Download
+the first capture's seg[2] — later decode shows it is the **FN layer**
+(an unedited layer, hence the "pristine" look). So the app's Download
 uploads: **the ACTIVE profile's base-layer keymap ([2]=0) + the
 active profile's FN-layer keymap ([2]=2)** — never other profiles.
 The RE'd "three profile configs" resolves to **three upload wires in
@@ -154,13 +154,13 @@ Verified framing from the app's own Download path
   [3]=0, [4]=packet#, [5]=chunk byte count (≤58), [6..]=chunk`.
 - 14 entries per packet (56 B), `Sleep(400)` between packets, configs
   uploaded in sequence, packet# resets per segment.
-- Note: `[2]` is a **segment id** — usb7.log shows two back-to-back
+- Note: `[2]` is a **segment id** — the capture shows two back-to-back
   uploads with [2]=0 and [2]=2, each with packet# 0..9. (The old
   "running item count" reading is dead; see the wire spec at top.)
 
 ## What remains unverified
 
-The 0x18 upload is captured firing twice (usb7 + usb8) —
+The 0x18 upload is captured firing twice (two separate captures) —
 see the wire spec at the top of this file. Still open: the contents
 of 0x19/0x22 when non-empty (macro/DKS content — the bank builders
 FUN_0047c4d0/FUN_0047d380 are not decoded), combo/shortcut/disable/
@@ -181,5 +181,5 @@ vendor app never reads the keymap — local XML only).
 <item keyCode="75" keyChar="PrtSc" operateType="0" repeatNum="1" mode="1" Value="70"/>
 ```
 
-(PgUp = 0x4B = **75**, PrtSc = 0x46 = 70 — wire-verified in usb7.log;
+(PgUp = 0x4B = **75**, PrtSc = 0x46 = 70 — wire-verified in the capture;
 the old "74" was Home.)

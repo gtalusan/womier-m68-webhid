@@ -2,7 +2,7 @@
 
 File: `M68_HE_Software_V2.exe` (15,576,167 bytes)
 SHA-256: `cfd8afa7d4ce2a18e711aea1f09479b43664b3a7646c3ae031fa41f9b881508d`
-Type: PE32 GUI, i386 (32-bit)
+Type: PE32 GUI, i386 (32-bit Win32 app — notes/18)
 
 ## Structure
 

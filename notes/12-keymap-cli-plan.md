@@ -2,7 +2,7 @@
 
 Status: IMPLEMENTED — CLI + web UI land; P2 closed, P0/P1
 still open. Wire spec for the keymap upload is wire-validated
-(usb7/usb8 — see notes/11 STATUS).
+(the keymap captures — see notes/11 STATUS).
 
 **Implementation log (live-verified):**
 - **Web app (same day):** click-to-remap with key/media/mouse target
@@ -40,13 +40,13 @@ The store keeps only per-profile keymap overrides; `profile import
 against the real Profile2.xml on the VM.
 - `protocol/src/keymap.js`: stock keymap + 66-key layout table, name
   map, `applyRemaps` — **byte-identical to the captures** (stock ==
-  usb7/usb8 seg[2]; PgUp→PrtSc == usb7 seg[0]; the usb8 profile-2
-  edits rebuild usb8 seg[0] exactly).
+  seg[2] in both captures; PgUp→PrtSc == the first capture's seg[0];
+  the second capture's profile-2 edits rebuild its seg[0] exactly).
 - `protocol/src/session.js`: `uploadKeymap()` — the full Download
   sequence (0x18 seg0+seg2 @400ms, 0x19 ×10 @100ms, 0x22 ×40
   @100ms, then ACK drain). Generated frames are **byte-identical to
-  usb7's 0x18** in the same order; the app also re-sends 3 duplicate
-  0x19 packets (quirk, not replicated). ~17 s total.
+  the first capture's 0x18** in the same order; the app also re-sends
+  3 duplicate 0x19 packets (quirk, not replicated). ~17 s total.
 - `cli/src/profiles.js`: profile store `~/.m68/profiles.json`
   (3 profiles, 0-based per user decision; current-profile pointer;
   per-profile keymap overrides + last light effect).
@@ -67,7 +67,7 @@ entire Download sequence is byte-known:
 
 ```
 0x18 seg[2]=0  active keymap   132 × 4B entries, 14/packet, 10 pkts (last 6)
-0x18 seg[2]=2  pristine default map   (byte-identical in usb7 + usb8)
+0x18 seg[2]=2  pristine default map   (byte-identical in both captures)
 0x19           SeniorKey/DKS banks   10 × 256 B, all-zero when unused
 0x22           unnamed bank          40 × 50 B = 2000 B, all-zero
 ```
@@ -90,8 +90,9 @@ Three small unknowns, each settled by a cheap VM probe (below):
 Evidence:
 
 - The app has 3 profiles; its Download uploads ONLY the active
-  profile's keymap (usb8: profile 1's edit absent once profile 2 was
-  active; profile switch sends **zero** frames — usb5/usb6).
+  profile's keymap (second capture: profile 1's edit absent once
+  profile 2 was active; profile switch sends **zero** frames —
+  custom-layer captures).
 - No wire command to switch or read a profile is known. The SDK's
   XML layer claims "profiles stored on the device, transferred as
   text/XML" (notes/03), but the wire shows compiled binary keymaps
@@ -132,7 +133,7 @@ light … [--profile N]                store/commit light config per profile
   parsing is a small addition). CLI-only edits default to a
   `~/.m68/profiles.xml` seed if no app XML is given.
 - Keymap compile (XML → 132 entries) is trivial and wire-verified:
-  stock identity map (byte-exact from usb7 seg[2]) + for each
+  stock identity map (byte-exact from the capture's seg[2]) + for each
   `keyEvent` item with operateType=0: `map[keyCode] = Value`. The
   goal binding round-trips: PgUp (75) → 0x46 at slot 82. Fn slot 121
   stays `01 00 00 00` always.
@@ -164,8 +165,8 @@ light … [--profile N]                store/commit light config per profile
 2. **cli**: `keymap` + `profile` commands, `--profile` plumbing on
    `light`; profile store (`~/.m68/profiles.xml` or imported app XML).
 3. **VM probes P0–P2**; fold results into defaults.
-4. **Live validation**: replay usb7's exact goal binding (PgUp→PrtSc)
-   from the CLI, byte-diff the generated frames against usb7.log;
+4. **Live validation**: replay the capture's exact goal binding (PgUp→PrtSc)
+   from the CLI, byte-diff the generated frames against the capture;
    then P1's minimal variants.
 5. Notes/11 + this file updated with probe outcomes.
 

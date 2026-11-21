@@ -3,7 +3,7 @@
 RE'd from M68.exe `FUN_00471ce0` — the Download path that
 compiles the profile XML into the 132-slot keymap AND sends the 0x18
 upload (same function; the 14-items-per-packet flush and Sleep(400)
-are visible in the decomp, matching usb7/usb8 byte-for-byte).
+are visible in the decomp, matching the keymap captures byte-for-byte).
 
 ## The entry format
 
@@ -19,7 +19,7 @@ always exactly 528 bytes.)
 |---|---|---|
 | *(no binding)* | `00 <keyCode> 00 00` | stock/identity |
 | *Fn (keyCode −10)* | `01 00 00 00` | slot 121 — wire-verified |
-| 0 Remap Key | `00 <target> 00 00` | wire-verified (usb7/usb8). Value −10 → `01 00 00 00`; Value −20 → `14 00 00 00` |
+| 0 Remap Key | `00 <target> 00 00` | wire-verified (both captures). Value −10 → `01 00 00 00`; Value −20 → `14 00 00 00` |
 | 1 Macro | `10 <keyCode> <slotIdx> 00` | slotIdx = ++field_744, the wire-0x19 macro-bank slot (0..9). **No CRC** — the old notes' "crc" reading was the slot counter. Macro content: see below |
 | 2 Key Combination | `13 <mod1> [<mod2>] <key> [00]` | Value = `"<modmask>,<keycode>"`; mask bits 0-7 → mods 0xE0-0xE7 (LCtrl…RGui) |
 | 3 Multimedia | `07 <id'> 00 00` | id′ table below (FUN_0047be90); wire-verified |
@@ -63,8 +63,8 @@ asm-verified (the old notes' "0x51a = 1306 bytes of macro text" and
   the SDK). 10 slots; each slot = 5 packets of 58/58/58/58/24 =
   256 bytes (content area 248 + 8-byte packet-0 header). Unused slots
   are zero-filled after the keymap by the compiler (the "all-zero
-  bank" in usb7/usb8). The keymap entry's slotIdx links the binding
-  to the bank slot.
+  bank" in the keymap captures). The keymap entry's slotIdx links the
+  binding to the bank slot.
 - **Packet 0 header** (offsets within the 64-byte frame):
   `[6]=0, [7]=repeatNum−1, [8]=0, [9]=4×eventCount (content bytes),
   [10]=0, [11]=atoi(struct+0x58) (unexplained), [12]=0, [13]=0`,
@@ -94,8 +94,8 @@ asm-verified (the old notes' "0x51a = 1306 bytes of macro text" and
   remapped). 40 slots; each slot = one 64-byte report
   `01 2A <storeIdx> 00 00 32 <mode…>`, payload length 0x32=50
   (meaningful prefix; rest zero). Unused slots zero-filled (the
-  usb7/usb8 40×50B bank). The keymap entry's storeIdx links binding
-  to store slot.
+  keymap captures' 40×50B bank). The keymap entry's storeIdx links
+  binding to store slot.
 - **Record model** (from a 416-byte SDK record; mode at +0x104,
   action strings at +0x108/+0x118/+0x128/+0x138):
   - mode 1: 5 actions, each = 4 timing bytes + a 4-byte action
@@ -132,7 +132,7 @@ default map" reading in notes/11 was an unedited Fn layer.)
   boot-mouse interface (the probe can't see them — the cursor is the
   test).
 - **Macro/DKS:** binary-verified (above), NOT hardware-tested — a
-  capture with a real macro (usb9) is the closing step.
+  capture with a real macro is the closing step.
 
 ## Corrections ledger (decode pass)
 
