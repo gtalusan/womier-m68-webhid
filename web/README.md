@@ -54,11 +54,16 @@ after the vendor app committed each mode.
 
 ## Assets
 
-`assets/keyboard.png` and the design tokens come from the vendor app's
-resources (X82HERGB). The overlay grid (`geometry.json` +
-`index.html`'s `GEO`) is hand-calibrated per-key geometry; a
-**Calibrate** mode in the page lets you nudge rows/columns and copy
-the adjusted JSON back.
+`assets/keyboard.png` is the vendor app's own X82HERGB keyboard
+render, used the same way the app uses it: the app sets it as a
+`border-image` on the keyboard frame (stretched to a 712×240 canvas)
+and draws the per-key light on top. The page mirrors that — the image
+fills the board, and each key overlay is the vendor KeyInfo cell
+inflated by 3 units (the app's 34×38 cap-top paint rect) mapped onto
+the same frame. The image therefore supplies the keycaps' 3D bevels
+and the perspective black border around every lit key. Per-key
+positions come from `assets/icons/images/configDir/KeyInfo_X82HERGB.config`
+(the vendor's KeyInfo table).
 
 ## Custom patterns
 

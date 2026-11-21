@@ -64,31 +64,39 @@
     border-radius: 12px; padding: 14px; overflow: hidden;
   }
   .board { position: relative; user-select: none; container-type: inline-size;
-    /* the app's keyboard frame QSS: QFrame#frame_bg */
-    background: rgb(25, 25, 25);
-    border: 1px solid rgb(33, 33, 33);
-    border-radius: 8px; }
-  .keys { position: absolute; inset: 0.8% 2% 7% 0.5%; } /* tighter left, bottom band absorbs the oversized widgets' bleed */
-  /* drawn keycaps, faithful to the app's KeyInfo render: dark caps,
-     labels top-left, additive backlight glow when lit.
-     Label metrics are in cqw (1% of the board width ≈ 7 KBD units)
-     so text scales with the caps at any window size. */
+    /* the app's keyboard frame: QFrame#frame{border-image:
+       url(Keyboard_X82HERGB.png)} (FUN_00509ef0). The image supplies
+       the case and the keycaps' 3D bevels — that's the perspective
+       black border around each lit key. The app stretches it to a
+       712x240 frame; the KeyInfo grid maps 1:1 onto that frame. */
+    background: url("assets/keyboard.png") center / 100% 100% no-repeat;
+    border-radius: 8px; overflow: hidden; }
+  .keys { position: absolute; inset: 0; }
+  /* light overlays sized to the vendor image's cap tops; the image's
+     keycap bevels/side walls stay visible around them */
   .key {
     position: absolute;
     pointer-events: none;
-    /* the app's key widget is LARGER than the KeyInfo cell (measured:
-       black bg extends ~4 units right, ~6 below, overlapping the
-       gaps); the rounded face fills the cell itself */
-    background: #050505;
-    overflow: hidden;
-    border-radius: 2px;
   }
   .key .face {
     position: absolute;
-    inset: 3px 4px 6px 3px;
-    background: #4b4b4b;
+    inset: 0;
+    /* cap surface: the vendor image's sheen — light from the top-left,
+       a soft specular falloff toward the bottom-right, and a bright
+       bevel line along the top and bottom edges */
+    background:
+      linear-gradient(135deg,
+        rgba(255, 255, 255, 0.17) 0%,
+        rgba(255, 255, 255, 0.04) 30%,
+        rgba(0, 0, 0, 0.03) 58%,
+        rgba(0, 0, 0, 0.20) 100%),
+      radial-gradient(120% 85% at 20% -8%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 58%),
+      var(--face-base, #4b4b4b);
     border-radius: 3px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.09),
+      inset 0 -7px 10px rgba(0, 0, 0, 0.10);
   }
   .face span {
     position: absolute; left: 0.55cqw; top: 0.45cqw;
@@ -133,25 +141,30 @@
     pointer-events: none;
   }
   .key.on::after { opacity: 0.92; }
-  /* soft color wash on the cap face */
-  .key.on .face::after {
-    content: "";
-    position: absolute; inset: 8% 4%;
-    border-radius: 4px;
-    background: var(--kc-fill, transparent);
-    opacity: 0.6;
+  /* lit cap: the old 60% color wash moved onto the face base, so the
+     sheen layers over the lit color (and the label stays crisp) */
+  .key.on .face {
+    --face-base: color-mix(in srgb, var(--kc-fill, #4b4b4b) 60%, #4b4b4b);
   }
   .key.on .face span { color: #eef1f5; }
 
   /* --- remap mode (always on; the rail lock gates interactions) --- */
   .board.remap .key { pointer-events: auto; cursor: pointer; }
-  .board.remap .key:hover { border-color: #4a5161; }
-  .board.remap .key.noremap { cursor: not-allowed; opacity: 0.6; }
-  .key.sel-source { outline: 2px solid var(--warn); outline-offset: 1px; }
-  .key.tune-sel { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .key.staged { outline: 1px dashed var(--warn); outline-offset: 1px; }
+  .board.remap .key:hover .face { outline: 1px solid #4a5161; outline-offset: 0; }
+  /* not-remappable (Fn): dim it, but keep the cap OPAQUE — element
+     opacity would let the vendor image's own legend show through */
+  .board.remap .key.noremap { cursor: not-allowed; }
+  .board.remap .key.noremap .face { --face-base: #303030; }
+  .board.remap .key.noremap .face span { color: #7d7d7d; }
+  .board.remap .key.noremap.on .face {
+    --face-base: color-mix(in srgb, var(--kc-fill, #4b4b4b) 30%, #303030);
+  }
+  .board.remap .key.noremap.on::after { opacity: 0.4; }
+  .key.sel-source .face { outline: 2px solid var(--warn); outline-offset: 1px; }
+  .key.tune-sel .face { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .key.staged .face { outline: 1px dashed var(--warn); outline-offset: 1px; }
   .key.staged span { color: var(--warn); }
-  .key.uploaded { outline: 1px solid var(--ok); outline-offset: 1px; }
+  .key.uploaded .face { outline: 1px solid var(--ok); outline-offset: 1px; }
   .key.uploaded span { color: var(--ok); }
   /* profile is the main context selector — a full-width tab bar above
      the layout so effects/remaps always read as per-profile settings */
@@ -514,6 +527,8 @@ const KBD = {
     {x:492,y:16,w:28,h:32,slot:33,dec:45,label:"-_"},
     {x:535,y:16,w:28,h:32,slot:34,dec:46,label:"=+"},
     {x:579,y:16,w:71,h:32,slot:36,dec:42,label:"Back"},
+    // vendor config PosX 666 — matches where the vendor image's cap
+    // actually sits (the image is the board now)
     {x:666,y:16,w:28,h:32,slot:38,dec:73,label:"Ins"},
     {x:16,y:59,w:49,h:32,slot:44,dec:43,label:"Tab"},
     {x:81,y:59,w:28,h:32,slot:45,dec:20,label:"Q"},
@@ -528,7 +543,7 @@ const KBD = {
     {x:470,y:59,w:28,h:32,slot:54,dec:19,label:"P"},
     {x:513,y:59,w:28,h:32,slot:55,dec:47,label:"[{"},
     {x:556,y:59,w:28,h:32,slot:56,dec:48,label:"]}"},
-    {x:599,y:59,w:49,h:32,slot:58,dec:49,label:"\"|"},
+    {x:599,y:59,w:49,h:32,slot:58,dec:49,label:"\\|"},
     {x:664,y:59,w:28,h:32,slot:60,dec:76,label:"Del"},
     {x:16,y:102,w:61,h:32,slot:66,dec:57,label:"CapsLk"},
     {x:92,y:102,w:28,h:32,slot:68,dec:4,label:"A"},
@@ -600,7 +615,7 @@ const REMAP_NAMES = {
   0x0e:"K",0x0f:"L",0x10:"M",0x11:"N",0x12:"O",0x13:"P",0x14:"Q",0x15:"R",0x16:"S",0x17:"T",
   0x18:"U",0x19:"V",0x1a:"W",0x1b:"X",0x1c:"Y",0x1d:"Z",0x1e:"1",0x1f:"2",0x20:"3",0x21:"4",
   0x22:"5",0x23:"6",0x24:"7",0x25:"8",0x26:"9",0x27:"0",0x28:"Enter",0x29:"Esc",0x2a:"Bsp",
-  0x2b:"Tab",0x2c:"Space",0x2d:"-",0x2e:"=",0x2f:"[",0x30:"]",0x31:"\\",0x33:";",0x34:"'",
+  0x2b:"Tab",0x2c:"Space",0x2d:"-",0x2e:"=",0x2f:"[",0x30:"]",0x31:"\\|",0x33:";",0x34:"'",
   0x36:",",0x37:".",0x38:"/",0x39:"Caps",0x3a:"F1",0x3b:"F2",0x3c:"F3",0x3d:"F4",0x3e:"F5",
   0x3f:"F6",0x40:"F7",0x41:"F8",0x42:"F9",0x43:"F10",0x44:"F11",0x45:"F12",0x46:"PrtSc",
   0x47:"ScrLk",0x48:"Pause",0x49:"Ins",0x4a:"Home",0x4b:"PgUp",0x4c:"Del",0x4d:"End",
@@ -1001,25 +1016,32 @@ const $ = (id) => document.getElementById(id);
 
 function buildKeys() {
   const box = $("keys");
-  const { w, h } = KBD.space;
-  $("board").style.aspectRatio = `${w} / ${h}`; // the app's true bounds
-  // base = the cap's default legend size in cqw (1cqw = 7 KBD units);
+  // The app renders the keyboard as a QFrame with
+  // `border-image: url(Keyboard_X82HERGB.png)` and stretches the image
+  // to a 712x240 frame (FUN_00509ef0); KeyInfo coords are frame units.
+  // The image supplies the case and the 3D keycap bevels.
+  const IMG_W = 712, IMG_H = 240;
+  // the app's light overlay is the cap top = cell inflated by 3 units
+  // each side (34x38 for a standard 28x32 cell) — FUN_00421d30 paints
+  // a 34x38 rounded rect, and the image's cap tops match.
+  const CAP_PAD = 3;
+  $("board").style.aspectRatio = `${IMG_W} / ${IMG_H}`; // the app's frame
+  // base = the cap's default legend size in cqw (1cqw = 7.12 KBD units);
   // long labels auto-shrink to stay inside the cap, like the app.
   const mk = (k, base) => {
     const el = document.createElement("div");
-    // the widget is larger than the KeyInfo cell — black bg bleeds
-    // into the gaps (measured: +3 top/left, +4 right, +6 bottom)
-    const M = (k.w >= 40 ? { t: 3, r: 4, b: 6, l: 3 } : { t: 2, r: 2, b: 2, l: 2 });
-    el.style.left = (k.x - M.l) / w * 100 + "%";
-    el.style.top = (k.y - M.t) / h * 100 + "%";
-    el.style.width = (k.w + M.l + M.r) / w * 100 + "%";
-    el.style.height = (k.h + M.t + M.b) / h * 100 + "%";
+    const x = k.x - CAP_PAD, y = k.y - CAP_PAD;
+    const w = k.w + CAP_PAD * 2, h = k.h + CAP_PAD * 2;
+    el.style.left = x / IMG_W * 100 + "%";
+    el.style.top = y / IMG_H * 100 + "%";
+    el.style.width = w / IMG_W * 100 + "%";
+    el.style.height = h / IMG_H * 100 + "%";
     const face = document.createElement("div");
     face.className = "face";
     el.appendChild(face);
     const span = document.createElement("span");
     span.textContent = k.label;
-    const fit = (k.w - 5) * 0.16 / Math.max(1, k.label.length);
+    const fit = (w - 5) * 0.16 / Math.max(1, k.label.length);
     span.style.fontSize = Math.min(base, fit) + "cqw";
     face.appendChild(span);
     box.appendChild(el);
@@ -1581,6 +1603,51 @@ $("prof-file").addEventListener("change", (e) => {
   if (f) profileImport(f);
   e.target.value = "";
 });
+// Refit a keycap legend whenever it changes: remap targets can be much
+// longer than the stock label ("Ins" → "PrtSc", "Num Enter", …).
+function setKeyLabel(el, k, text) {
+  const span = el.querySelector("span");
+  // Allow a break after "/" as well as at spaces: "Play/Pause" should
+  // wrap rather than shrink to a single tiny line. The zero-width space
+  // is only in the cap legend; the tray/staged labels stay unchanged.
+  const display = text.replace(/\//g, "/​");
+  span.textContent = display;
+  // Measure at the normal size, then fit the legend into the cap:
+  //   - one line if possible,
+  //   - otherwise wrap at spaces/slashes ("Num .Del", "Play/Pause"),
+  //   - otherwise shrink the single line ("PrtSc").
+  span.style.fontSize = "1.25cqw";
+  span.style.whiteSpace = "pre";
+  span.style.overflowWrap = "";
+  span.style.lineHeight = "";
+  span.style.maxWidth = "";
+  const face = el.querySelector(".face");
+  if (!face) return;
+  const pad = Math.max(6, face.clientWidth * 0.12);
+  const maxW = face.clientWidth - span.offsetLeft - pad;
+  const maxH = face.clientHeight - span.offsetTop - 2;
+  if (maxW <= 0 || maxH <= 0) return;
+  let w = span.getBoundingClientRect().width;
+  let h = span.getBoundingClientRect().height;
+  if (w <= maxW && h <= maxH) return;
+  if (/\s/.test(text) || text.includes("/")) {
+    span.style.whiteSpace = "normal";
+    span.style.lineHeight = "0.95";
+    span.style.maxWidth = maxW + "px";
+    w = span.scrollWidth;
+    h = span.getBoundingClientRect().height;
+    let scale = 1;
+    if (w > maxW + 1) scale = Math.min(scale, maxW / w);
+    if (h > maxH) scale = Math.min(scale, maxH / h);
+    if (scale < 1) {
+      span.style.fontSize = Math.max(0.4, 1.25 * scale).toFixed(3) + "cqw";
+    }
+    return;
+  }
+  if (w > maxW) {
+    span.style.fontSize = Math.max(0.4, 1.25 * maxW / w).toFixed(3) + "cqw";
+  }
+}
 function remapRefresh() {
   if (!connected) {
     // pristine presentation until a keyboard connects: stock legends,
@@ -1589,7 +1656,7 @@ function remapRefresh() {
     for (const k of KBD.keys) {
       const el = keyEl.get(k.slot);
       if (!el) continue;
-      el.querySelector("span").textContent = k.label;
+      setKeyLabel(el, k, k.label);
       el.classList.remove("staged", "uploaded", "sel-source", "noremap");
       if (k.slot === FN_SLOT) el.classList.add("noremap");
     }
@@ -1606,9 +1673,8 @@ function remapRefresh() {
   for (const k of KBD.keys) {
     const el = keyEl.get(k.slot);
     if (!el) continue;
-    const span = el.querySelector("span");
     const o = over[k.slot];
-    span.textContent = o !== undefined ? targetLabel(o) : k.label;
+    setKeyLabel(el, k, o !== undefined ? targetLabel(o) : k.label);
     el.classList.remove("staged", "uploaded", "sel-source", "noremap");
     if (k.slot === FN_SLOT) el.classList.add("noremap");
     if (o !== undefined) el.classList.add(RM.uploaded[k.slot] === o ? "uploaded" : "staged");

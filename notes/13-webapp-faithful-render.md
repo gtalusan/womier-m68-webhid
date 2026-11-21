@@ -134,3 +134,51 @@ took B's action) — fixed and re-verified.
   `.row label { flex: 1 }` — scoped with `.row .well`. A stale
   WebHID session after many hard-reloads can wedge Chrome's USB
   grant stack; restarting Chrome clears it.
+
+## Cap-face correction (superseded by the image render below)
+
+The interim programmatic-cap render leaked the widget bleed into the
+cap: wide keys (Back/Tab/CapsLk/Enter/shifts/Space) used larger widget
+margins while the face inset was a fixed px value, so their caps were
+~5 units taller than standard keys. Faces were made the exact KeyInfo
+cell and the surround a uniform 2-unit border; Ins was normalized from
+the vendor's PosX 666 to 664 because it stuck past the 692-unit
+board. That fixed the flat render but removed the keycaps' 3D
+perspective.
+
+## Vendor-image render (the app's actual keyboard)
+
+The app's keyboard is a QFrame styled
+`border-image: url(/images/hidImages/Keyboard_<model>.png)`
+(FUN_00509ef0), stretched to a **712×240** frame. The per-key
+`keyboardButCustom` widgets (QToolButton subclass, constructed by
+FUN_004214d0 from `FUN_0050c7a0`) paint only the light on top: the
+paint rect is 34×38 units for a 28×32 KeyInfo cell (`CAP_PAD` 3 —
+FUN_00421d30's rounded rect). The perspective black border around a
+lit key is therefore the **image's own 3D keycap bevel and side
+walls**, not a flat widget background.
+
+The web app now does the same:
+
+- `assets/keyboard.png` (byte-identical to the vendor image, md5
+  27c6543b…) fills `.board` stretched 100%/100%; the board's
+  aspect-ratio is 712/240.
+- Each key overlay is the KeyInfo cell inflated by 3 units on every
+  side, mapped onto that frame. Verified against the image in the
+  simulator: the Q/1/Del/Space overlays land on the image's cap tops.
+- The black surround div is gone; the image supplies the bevels and
+  therefore the perspective border at every cap height.
+- Ins uses the vendor PosX **666** again — that is where the image's
+  Ins cap sits (the image's right column is in perspective, not a
+  flat grid; the interim 664 normalization is reverted).
+- The `noremap` Fn dimming no longer uses element opacity (which let
+  the image's own "Fn" legend ghost through the cap); it dims the
+  opaque face/label/glow instead.
+- **Cap sheen**: the image's cap tops carry a baked specular gradient
+  (sampled on the spacebar: ~65 at the top-left falling to ~43 at the
+  bottom-right, with bright bevel rims on the top and bottom edges).
+  The overlay reproduces it with a 135° white→black gradient plus a
+  top-left radial hotspot and inset bevel lines; the lit color is
+  mixed into the face base (60% key color + 40% cap gray, replacing
+  the old ::after wash) so the sheen sits over the light and the
+  label stays crisp.
