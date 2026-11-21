@@ -104,10 +104,18 @@
   }
   header h1 .accent { color: var(--accent); }
   header .sub { color: var(--fg-dim); font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  header .header-buttons {
+    margin-left: auto;
+    display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: flex-end; gap: 8px;
+  }
   header .chip {
-    margin-left: auto; font-family: var(--font-data); font-size: 0.72rem;
+    font-family: var(--font-data); font-size: 0.72rem;
     border: 1px solid var(--frame); border-radius: 999px; padding: 3px 10px;
     color: var(--fg-dim); letter-spacing: 0.08em;
+  }
+  @media (max-width: 699px) {
+    header .header-buttons { margin-left: 0; justify-content: flex-start; }
   }
 
   .layout { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
@@ -296,6 +304,7 @@
     font-family: var(--font-data); font-size: 0.68rem; color: var(--fg-dim);
   }
   .caption b { color: var(--fg); font-weight: 500; }
+  .caption .device { margin-left: auto; }
 
   /* --- control rail --- */
   .rail { display: flex; flex-direction: column; gap: 12px; }
@@ -373,7 +382,7 @@
   .meta .k { color: var(--accent); }
   .about {
     margin-top: 16px; background: var(--bg-2); border: 1px solid var(--frame);
-    border-radius: 12px; padding: 14px; max-width: 82ch;
+    border-radius: 12px; padding: 16px 18px;
     color: var(--fg-dim); font-size: 0.78rem;
   }
   .about h2 {
@@ -384,6 +393,19 @@
   .about p:last-child { margin-bottom: 0; }
   .about strong, .about code { color: var(--fg); font-weight: 500; }
   .about a { color: var(--accent); }
+  /* wide: the two copy blocks sit side by side, with the label leading */
+  @media (min-width: 700px) {
+    .about {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 24px; align-items: start;
+    }
+    .about h2 { grid-column: 1 / -1; margin-bottom: 2px; }
+    .about p { margin: 0; }
+  }
+  @media (min-width: 1060px) {
+    .about { grid-template-columns: minmax(0, 0.7fr) repeat(2, minmax(0, 1fr)); }
+    .about h2 { grid-column: auto; margin: 0; }
+  }
   footer {
     margin-top: 16px; color: var(--fg-dim); font-size: 0.72rem;
     display: flex; gap: 12px; flex-wrap: wrap;
@@ -399,7 +421,10 @@
   <header>
     <h1>M68 <span class="accent">Light Studio</span></h1>
     <span class="sub">Womier M68 HE · X82HERGB · WebHID keyboard configurator</span>
-    <span class="chip" id="chip">app assets · M68.exe</span> <button type="button" class="chip" id="connect" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Connect keyboard</button> <button type="button" class="chip" id="sim-toggle" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Simulator</button>
+    <div class="header-buttons">
+      <button type="button" class="chip" id="connect" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Connect keyboard</button>
+      <button type="button" class="chip" id="sim-toggle" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Simulator</button>
+    </div>
   </header>
 
   <div id="gate" hidden></div>
@@ -422,12 +447,12 @@
       <div class="board" id="board">
         <div class="keys" id="keys"></div>
       </div>
-      <div class="caption">
+      <div class="caption" id="caption" hidden>
         <span><b id="cap-mode">Static</b> <span id="cap-id">0x00</span> <span id="cap-hint"></span></span>
         <span>brightness <b id="cap-b">4</b>/4</span>
         <span>speed <b id="cap-s">3</b>/4</span>
         <span id="cap-fc"></span>
-        <span style="flex:1"></span>
+        <span id="cap-device" class="device"></span>
       </div>
     </section>
       <div class="panel" id="effect-panel">
@@ -1101,6 +1126,7 @@ let keyEl = new Map(); // slot -> element
 let raf = 0;
 
 const $ = (id) => document.getElementById(id);
+function setDeviceInfo(text) { $("cap-device").textContent = text || ""; }
 
 function buildKeys() {
   const box = $("keys");
@@ -1494,6 +1520,7 @@ function swatchesFor(id, cur, cb) {
   }
 }
 function sync() {
+  $("caption").hidden = !connected; // settings only read as live with a board attached
   const ln = $("light-note");
   if (ln) { ln.textContent = ""; ln.className = "note"; }
   const mode = MODES.find(([n]) => n === S.mode);
@@ -2062,7 +2089,7 @@ function onInputReport(e) {
     const parts = csv.split(",");
     if (parts.length >= 6) {
       // first handshake response: "M484,20,KB,FQ,X82HERGB,V1_11_05"
-      $("chip").textContent = parts[0] + " · " + parts[4] + " · " + parts[5];
+      setDeviceInfo(`${parts[0]} · ${parts[4]} · FW ${parts[5]}`);
     }
     // second response = build date ("Mar 26 2024,11:06:05") — ignored
   }
@@ -2096,6 +2123,7 @@ let simulated = false;
 function enterSim() {
   simulated = true;
   connected = true;
+  setDeviceInfo("M484 · X82HERGB · FW V1_11_05"); // fake the handshake
   dev = { sendReport: async () => {}, close: async () => {} };
   outReport = { reportId: 1 };
   setGate(null);
@@ -2115,6 +2143,8 @@ function enterSim() {
 function exitSim() {
   simulated = false;
   connected = false;
+  setDeviceInfo("");
+  $("caption").hidden = true;
   dev = null;
   outReport = null;
   $("sim-toggle").textContent = "Simulator";
@@ -2133,6 +2163,8 @@ $("sim-toggle").addEventListener("click", () => { simulated ? exitSim() : enterS
 async function connectHid() {
   const btn = $("connect");
   if (connected) { await disconnectHid(); return; }
+  setDeviceInfo("");
+  $("caption").hidden = true; // shown once the board is open
   if (!navigator.hid) {
     btn.textContent = "WebHID needs Chrome/Edge";
     btn.style.borderColor = "var(--warn)";
@@ -2178,6 +2210,8 @@ async function connectHid() {
   } catch (e) {
     btn.textContent = "Connect failed — retry";
     btn.style.borderColor = "";
+    setDeviceInfo("");
+    $("caption").hidden = true;
     rateCode = 8; debounceCode = DEBOUNCE_MAX;
     drawRate(); drawDebounce(); resetTune();
     setGate("warn", "<b>No keyboard.</b> Connect the M68 HE and click Connect again.");
@@ -2189,6 +2223,8 @@ async function disconnectHid() {
   if (!dev) return;
   try { await dev.close(); } catch {}
   dev = null; connected = false; outReport = null;
+  setDeviceInfo("");
+  $("caption").hidden = true;
   RM.source = null; rateCode = 8; debounceCode = DEBOUNCE_MAX;
   drawRate(); drawDebounce(); resetTune(); remapRefresh();
   $("connect").textContent = "Connect keyboard";
@@ -2200,6 +2236,8 @@ if (navigator.hid) {
   navigator.hid.addEventListener("disconnect", (e) => {
     if (e.device === dev) {
       dev = null; connected = false; outReport = null;
+      setDeviceInfo("");
+      $("caption").hidden = true;
       RM.source = null; rateCode = 8; debounceCode = DEBOUNCE_MAX;
   drawRate(); drawDebounce(); resetTune(); remapRefresh();
       $("connect").textContent = "Reconnect keyboard";
