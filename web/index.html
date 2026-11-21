@@ -1,7 +1,64 @@
-<meta name="claude:viewport-fit-sides" content="cover">
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>M68 Light Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>M68 Light Studio — Womier M68 HE Keyboard Configurator</title>
+<meta name="description" content="Configure the Womier M68 HE keyboard in your browser over WebHID: 15 RGB effects, key remapping, profiles, polling rate, debounce and per-key sensitivity.">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="theme-color" content="#11142a">
+<link rel="canonical" href="https://gtalusan.github.io/womier-m68-webhid/">
+<link rel="icon" href="assets/icons/images/trayLogo.ico" sizes="any">
+<link rel="apple-touch-icon" href="assets/icons/images/trayLogo.ico">
+<link rel="preload" as="image" href="assets/keyboard.png">
+
+<!-- Open Graph (link previews on GitHub, Discord, Slack, Facebook, …) -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="M68 Light Studio">
+<meta property="og:title" content="M68 Light Studio — Womier M68 HE Keyboard Configurator">
+<meta property="og:description" content="Configure the Womier M68 HE keyboard in your browser over WebHID: 15 RGB effects, key remapping, profiles, polling rate, debounce and per-key sensitivity.">
+<meta property="og:url" content="https://gtalusan.github.io/womier-m68-webhid/">
+<meta property="og:image" content="https://gtalusan.github.io/womier-m68-webhid/assets/keyboard.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1875">
+<meta property="og:image:height" content="647">
+<meta property="og:image:alt" content="The Womier M68 HE keyboard rendered with per-key RGB lighting">
+
+<!-- Twitter / X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="M68 Light Studio — Womier M68 HE Keyboard Configurator">
+<meta name="twitter:description" content="Configure the Womier M68 HE keyboard in your browser over WebHID: 15 RGB effects, key remapping, profiles, polling rate, debounce and per-key sensitivity.">
+<meta name="twitter:image" content="https://gtalusan.github.io/womier-m68-webhid/assets/keyboard.png">
+<meta name="twitter:image:alt" content="The Womier M68 HE keyboard rendered with per-key RGB lighting">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "M68 Light Studio",
+  "alternateName": "Womier M68 HE WebHID Configurator",
+  "url": "https://gtalusan.github.io/womier-m68-webhid/",
+  "description": "Free browser configurator for the Womier M68 HE (X82HERGB) keyboard: 15 RGB light effects, key remapping, profiles, polling rate, debounce and per-key sensitivity over WebHID.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Windows, macOS, Linux, ChromeOS",
+  "browserRequirements": "Requires Chrome or Edge (WebHID)",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "image": "https://gtalusan.github.io/womier-m68-webhid/assets/keyboard.png",
+  "screenshot": "https://gtalusan.github.io/womier-m68-webhid/assets/keyboard.png",
+  "featureList": [
+    "15 RGB lighting effects",
+    "Key remapping and keycap swap",
+    "Per-profile lighting and keymaps",
+    "Polling rate 1K/2K/4K/8K",
+    "Debounce and per-key sensitivity tuning"
+  ],
+  "sameAs": ["https://github.com/gtalusan/womier-m68-webhid"],
+  "author": { "@type": "Person", "name": "gtalusan", "url": "https://github.com/gtalusan" }
+}
+</script>
 <style>
   /* Layout: keyboard centerpiece (per-key light overlay driven by the
      app's verified mode semantics), control rail beside it, single
@@ -314,6 +371,19 @@
   .meta { font-family: var(--font-data); font-size: 0.68rem; color: var(--fg-dim); line-height: 1.7; }
   .meta b { color: var(--fg); font-weight: 500; }
   .meta .k { color: var(--accent); }
+  .about {
+    margin-top: 16px; background: var(--bg-2); border: 1px solid var(--frame);
+    border-radius: 12px; padding: 14px; max-width: 82ch;
+    color: var(--fg-dim); font-size: 0.78rem;
+  }
+  .about h2 {
+    margin: 0 0 8px; font-family: var(--font-display); font-size: 0.78rem;
+    font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-dim);
+  }
+  .about p { margin: 0 0 8px; }
+  .about p:last-child { margin-bottom: 0; }
+  .about strong, .about code { color: var(--fg); font-weight: 500; }
+  .about a { color: var(--accent); }
   footer {
     margin-top: 16px; color: var(--fg-dim); font-size: 0.72rem;
     display: flex; gap: 12px; flex-wrap: wrap;
@@ -322,16 +392,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
 
 <div class="wrap">
   <header>
     <h1>M68 <span class="accent">Light Studio</span></h1>
-    <span class="sub">Womier M68 HE · X82HERGB · effect preview</span>
+    <span class="sub">Womier M68 HE · X82HERGB · WebHID keyboard configurator</span>
     <span class="chip" id="chip">app assets · M68.exe</span> <button type="button" class="chip" id="connect" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Connect keyboard</button> <button type="button" class="chip" id="sim-toggle" style="cursor:pointer;background:var(--bg-3);color:var(--fg);">Simulator</button>
   </header>
 
   <div id="gate" hidden></div>
 
+  <main>
   <div class="profile-bar" id="profile-bar">
     <div class="tabs" id="prof-tabs"></div>
     <div class="tab-summary">
@@ -467,6 +540,21 @@
       </div>
     </aside>
   </div>
+
+  <section class="about" aria-labelledby="about-title">
+    <h2 id="about-title">About M68 Light Studio</h2>
+    <p><strong>M68 Light Studio</strong> is a free, open-source browser configurator for the
+    <strong>Womier M68 HE</strong> magnetic (Hall-effect) keyboard — board <code>X82HERGB</code>,
+    USB VID 0416 / PID 7372. It talks to the board directly over WebHID in Chrome or Edge, on
+    Windows, macOS and Linux, with no driver, install or vendor software.</p>
+    <p>Set any of the <strong>15 RGB lighting effects</strong> (Static, Breath, Wave, Neon, Radar,
+    Reactive, Aurora, Ripple, Twinkle, Custom, Cross, Speed Respond, Auto Ripple, Striation,
+    Fireworks), remap keys or swap keycaps, keep three lighting-and-keymap profiles, and tune
+    polling rate (1K–8K Hz), debounce and per-key press/release sensitivity. The HID protocol was
+    reverse-engineered from the vendor's Windows app and verified on the device; source code and
+    protocol notes are on <a href="https://github.com/gtalusan/womier-m68-webhid">GitHub</a>.</p>
+  </section>
+  </main>
 
   <footer>
     <span>Keyboard image &amp; palette from the M68 Windows app (X82HERGB).</span>
@@ -2140,3 +2228,5 @@ sync = function () {
   if (dev) commitCurrent();
 };
 </script>
+</body>
+</html>

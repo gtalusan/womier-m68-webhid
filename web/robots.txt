@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gtalusan.github.io/womier-m68-webhid/sitemap.xml
